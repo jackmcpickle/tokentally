@@ -1,0 +1,35 @@
+name = "tokentally"
+main = "src/index.tsx"
+compatibility_date = "2025-03-01"
+compatibility_flags = ["nodejs_compat"]
+
+# account_id = "..."            # set via `wrangler login` / CLOUDFLARE_ACCOUNT_ID or uncomment
+
+[vars]
+ENVIRONMENT = "production"
+# Public base URL of the deployed worker; used to render onboarding snippets.
+# Override per-deploy. Falls back to the request origin when unset.
+PUBLIC_BASE_URL = ""
+
+# Serve the reporter script as raw text (only matches our uniquely-named file).
+[[rules]]
+type = "Text"
+globs = ["**/tokentally.mjs"]
+fallthrough = true
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+# D1 database — create with:  wrangler d1 create tokentally
+# then paste the returned database_id below.
+[[d1_databases]]
+binding = "DB"
+database_name = "tokentally"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "drizzle"
+
+# KV namespace for rate limiting — create with:  wrangler kv namespace create RATE_LIMIT
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"

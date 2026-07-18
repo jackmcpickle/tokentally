@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn",
+    "pedantic": "warn"
+  },
+  "plugins": ["typescript", "import"],
+  "rules": {
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "typescript/no-floating-promises": "error",
+    "eslint/max-lines-per-function": "off",
+    "eslint/no-inline-comments": "off",
+    "eslint/require-unicode-regexp": "off",
+    "import/max-dependencies": "off"
+  },
+  "ignorePatterns": ["node_modules", "reporter", "dist", ".wrangler"]
+}

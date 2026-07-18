@@ -1,0 +1,28 @@
+{
+  "name": "tokentally",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Public token leaderboard for AI builders — a single Hono worker on Cloudflare + D1.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --minify",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint",
+    "check": "pnpm lint && pnpm typecheck && pnpm test",
+    "db:migrate:local": "wrangler d1 migrations apply tokentally --local",
+    "db:migrate": "wrangler d1 migrations apply tokentally --remote"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250109.0",
+    "oxlint": "^1.74.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.7",
+    "wrangler": "^3.99.0"
+  },
+  "dependencies": {
+    "hono": "^4.6.16"
+  }
+}
