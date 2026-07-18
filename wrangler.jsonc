@@ -15,6 +15,10 @@
             "pattern": "tokenmaxer.quest",
             "custom_domain": true,
         },
+        {
+            "pattern": "www.tokenmaxer.quest",
+            "custom_domain": true,
+        },
     ],
     // Serve the reporter script as raw text (only matches our uniquely-named file).
     "rules": [

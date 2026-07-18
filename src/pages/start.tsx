@@ -1,8 +1,19 @@
-import type { FC } from "hono/jsx";
-import { Layout } from "@/pages/layout";
+import type { FC } from 'hono/jsx';
+import { Layout } from '@/pages/layout';
+import {
+    btnCopy,
+    btnPrimary,
+    copyrow,
+    field,
+    fieldLbl,
+    muted,
+    notice,
+    panel,
+    sub,
+} from '@/pages/ui';
 
 function clientScript(base: string): string {
-  return `
+    return `
 const BASE = ${JSON.stringify(base)} || location.origin;
 const form = document.getElementById('reg');
 const err = document.getElementById('err');
@@ -72,90 +83,128 @@ document.addEventListener('click', (e) => {
 }
 
 export const Start: FC<{ base: string }> = ({ base }) => (
-  <Layout title="Get started · TokenTally" base={base}>
-    <h1>Join the board</h1>
-    <p class="sub">
-      Pick a username, get a token, paste two snippets. No email, no password — the token is your
-      only credential, so keep it somewhere safe.
-    </p>
-
-    <div class="panel">
-      <form id="reg">
-        <label class="field">
-          <span class="lbl">Username (2–32 chars: letters, numbers, _ or -)</span>
-          <input
-            id="username"
-            type="text"
-            placeholder="e.g. tokenlord"
-            autocomplete="off"
-            required
-          />
-        </label>
-        <button type="submit">Claim username</button>
-        <span id="err" class="muted" style="color:#ff8080; margin-left:12px" />
-      </form>
-
-      <div id="result" style="display:none">
-        <div class="notice">
-          <strong>
-            Welcome, <span id="r-user" />.
-          </strong>{" "}
-          Your token is shown once — save it now. Lost tokens can't be recovered.
-        </div>
-
-        <h2>Your token</h2>
-        <div class="copyrow">
-          <pre id="r-token" />
-          <button class="copy ghost" data-target="r-token" type="button">
-            Copy
-          </button>
-        </div>
-
-        <h2>1. One-time setup</h2>
-        <p class="muted">
-          Downloads the reporter and writes your config (the token lives here, never in shared
-          settings). Run in a terminal:
+    <Layout
+        title="Get started · TokenTally"
+        base={base}
+    >
+        <h1>Join the board</h1>
+        <p class={sub}>
+            Pick a username, get a token, paste two snippets. No email, no
+            password — the token is your only credential, so keep it somewhere
+            safe.
         </p>
-        <div class="copyrow">
-          <pre id="r-setup" />
-          <button class="copy ghost" data-target="r-setup" type="button">
-            Copy
-          </button>
+
+        <div class={panel}>
+            <form id="reg">
+                <label class={field}>
+                    <span class={fieldLbl}>
+                        Username (2–32 chars: letters, numbers, _ or -)
+                    </span>
+                    <input
+                        id="username"
+                        type="text"
+                        placeholder="e.g. tokenlord"
+                        autocomplete="off"
+                        required
+                    />
+                </label>
+                <button
+                    class={btnPrimary}
+                    type="submit"
+                >
+                    Claim username
+                </button>
+                <span
+                    id="err"
+                    class="ml-3 text-[#ff8080]"
+                />
+            </form>
+
+            <div
+                id="result"
+                style="display:none"
+            >
+                <div class={notice}>
+                    <strong>
+                        Welcome, <span id="r-user" />.
+                    </strong>{' '}
+                    Your token is shown once — save it now. Lost tokens can't be
+                    recovered.
+                </div>
+
+                <h2>Your token</h2>
+                <div class={copyrow}>
+                    <pre id="r-token" />
+                    <button
+                        class={`copy ${btnCopy}`}
+                        data-target="r-token"
+                        type="button"
+                    >
+                        Copy
+                    </button>
+                </div>
+
+                <h2>1. One-time setup</h2>
+                <p class={muted}>
+                    Downloads the reporter and writes your config (the token
+                    lives here, never in shared settings). Run in a terminal:
+                </p>
+                <div class={copyrow}>
+                    <pre id="r-setup" />
+                    <button
+                        class={`copy ${btnCopy}`}
+                        data-target="r-setup"
+                        type="button"
+                    >
+                        Copy
+                    </button>
+                </div>
+
+                <h2>2a. Claude Code hooks</h2>
+                <p class={muted}>
+                    Merge into <code>~/.claude/settings.json</code>:
+                </p>
+                <div class={copyrow}>
+                    <pre id="r-claude" />
+                    <button
+                        class={`copy ${btnCopy}`}
+                        data-target="r-claude"
+                        type="button"
+                    >
+                        Copy
+                    </button>
+                </div>
+
+                <h2>2b. Codex hooks</h2>
+                <p class={muted}>
+                    Add to <code>~/.codex/config.toml</code>. Codex has no
+                    SessionEnd hook, so your latest session reports when you
+                    next launch Codex.
+                </p>
+                <div class={copyrow}>
+                    <pre id="r-codex" />
+                    <button
+                        class={`copy ${btnCopy}`}
+                        data-target="r-codex"
+                        type="button"
+                    >
+                        Copy
+                    </button>
+                </div>
+
+                <p class={`${sub} mt-6`}>
+                    That's it.{' '}
+                    <a
+                        id="r-profile"
+                        href="/"
+                    >
+                        View your profile →
+                    </a>
+                </p>
+            </div>
         </div>
 
-        <h2>2a. Claude Code hooks</h2>
-        <p class="muted">
-          Merge into <code>~/.claude/settings.json</code>:
-        </p>
-        <div class="copyrow">
-          <pre id="r-claude" />
-          <button class="copy ghost" data-target="r-claude" type="button">
-            Copy
-          </button>
-        </div>
-
-        <h2>2b. Codex hooks</h2>
-        <p class="muted">
-          Add to <code>~/.codex/config.toml</code>. Codex has no SessionEnd hook, so your latest
-          session reports when you next launch Codex.
-        </p>
-        <div class="copyrow">
-          <pre id="r-codex" />
-          <button class="copy ghost" data-target="r-codex" type="button">
-            Copy
-          </button>
-        </div>
-
-        <p class="sub" style="margin-top:24px">
-          That's it.{" "}
-          <a id="r-profile" href="/">
-            View your profile →
-          </a>
-        </p>
-      </div>
-    </div>
-
-    {/* eslint-disable-next-line */}
-    <script dangerouslySetInnerHTML={{ __html: clientScript(base) }} />
-  </Layout>
+        {/* eslint-disable-next-line */}
+        <script dangerouslySetInnerHTML={{ __html: clientScript(base) }} />
+    </Layout>
 );

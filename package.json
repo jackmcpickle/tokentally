@@ -1,31 +1,35 @@
 {
-  "name": "tokentally",
-  "version": "0.1.0",
-  "private": true,
-  "description": "Public token leaderboard for AI builders — a single Hono worker on Cloudflare + D1.",
-  "type": "module",
-  "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy --minify",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
-    "lint": "oxlint",
-    "format": "oxfmt .",
-    "format:check": "oxfmt --check .",
-    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test",
-    "db:migrate:local": "wrangler d1 migrations apply tokentally --local",
-    "db:migrate": "wrangler d1 migrations apply tokentally --remote"
-  },
-  "dependencies": {
-    "hono": "^4.6.16"
-  },
-  "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250109.0",
-    "oxfmt": "^0.59.0",
-    "oxlint": "^1.74.0",
-    "typescript": "^5.7.3",
-    "vitest": "^3.2.7",
-    "wrangler": "^3.99.0"
-  }
+    "name": "tokentally",
+    "version": "0.1.0",
+    "private": true,
+    "description": "Public token leaderboard for AI builders — a single Hono worker on Cloudflare + D1.",
+    "type": "module",
+    "scripts": {
+        "build:css": "tailwindcss -i src/styles/tailwind.css -o src/styles/app.css --minify",
+        "build:css:watch": "tailwindcss -i src/styles/tailwind.css -o src/styles/app.css --watch",
+        "dev": "pnpm build:css && wrangler dev",
+        "deploy": "pnpm build:css && wrangler deploy --minify",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "typecheck": "tsc --noEmit",
+        "lint": "oxlint",
+        "fmt": "oxfmt .",
+        "fmt:check": "oxfmt --check .",
+        "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test",
+        "db:migrate:local": "wrangler d1 migrations apply tokentally --local",
+        "db:migrate": "wrangler d1 migrations apply tokentally --remote"
+    },
+    "dependencies": {
+        "hono": "^4.6.16"
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "^4.20250109.0",
+        "@tailwindcss/cli": "^4.3.3",
+        "oxfmt": "^0.59.0",
+        "oxlint": "^1.74.0",
+        "tailwindcss": "^4.3.3",
+        "typescript": "^5.7.3",
+        "vitest": "^3.2.7",
+        "wrangler": "^3.99.0"
+    }
 }

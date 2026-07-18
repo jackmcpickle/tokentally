@@ -1,0 +1,92 @@
+@import 'tailwindcss' source(none);
+
+/* Scan the pages (and shared class bundles in ui.ts) for utility classes. */
+@source "../pages/**/*.{ts,tsx}";
+@source "../index.tsx";
+
+/* TokenTally palette — exposed as color utilities (bg-bg, text-muted, …). */
+@theme {
+    --color-bg: #0b0d10;
+    --color-panel: #14171c;
+    --color-panel2: #1b1f26;
+    --color-border: #262b33;
+    --color-text: #e7eaee;
+    --color-muted: #97a1af;
+    --color-accent: #7c9cff;
+    --color-accent2: #4ade80;
+    --color-gold: #f5c451;
+    --color-silver: #c7cdd6;
+    --color-bronze: #d98a5b;
+
+    --font-sans:
+        ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Element-level defaults (typography, form controls) that used to live in the
+   global stylesheet. Component-level styling now lives as utilities in the JSX. */
+@layer base {
+    body {
+        margin: 0;
+        background: var(--color-bg);
+        color: var(--color-text);
+        font: 15px/1.55 var(--font-sans);
+    }
+    a {
+        color: var(--color-accent);
+        text-decoration: none;
+    }
+    a:hover {
+        text-decoration: underline;
+    }
+    h1 {
+        font-size: 30px;
+        letter-spacing: -0.02em;
+        margin: 0 0 6px;
+    }
+    h2 {
+        font-size: 20px;
+        margin: 32px 0 12px;
+    }
+    code,
+    pre {
+        font-family: var(--font-mono);
+    }
+    select,
+    input[type='text'] {
+        background: var(--color-panel2);
+        color: var(--color-text);
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 14px;
+        min-width: 130px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th,
+    td {
+        text-align: left;
+        padding: 11px 12px;
+        border-bottom: 1px solid var(--color-border);
+    }
+    th {
+        color: var(--color-muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    tr:last-child td {
+        border-bottom: 0;
+    }
+    pre {
+        background: #0f1216;
+        border: 1px solid var(--color-border);
+        border-radius: 10px;
+        padding: 14px;
+        overflow-x: auto;
+        font-size: 13px;
+    }
+}
