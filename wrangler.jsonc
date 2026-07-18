@@ -1,50 +1,56 @@
 {
-  "name": "tokentally",
-  "main": "src/index.tsx",
-  "account_id": "16a04bbc76ee5eccbcc1d6c39bc9a797",
-  "compatibility_date": "2025-03-01",
-  "compatibility_flags": ["nodejs_compat"],
-  "vars": {
-    "ENVIRONMENT": "production",
-    // Public base URL of the deployed worker; used to render onboarding snippets.
-    // Override per-deploy. Falls back to the request origin when unset.
-    "PUBLIC_BASE_URL": "",
-  },
-  // Serve the reporter script as raw text (only matches our uniquely-named file).
-  "rules": [
-    {
-      "type": "Text",
-      "globs": ["**/tokentally.mjs"],
-      "fallthrough": true,
+    "name": "tokentally",
+    "main": "src/index.tsx",
+    "account_id": "16a04bbc76ee5eccbcc1d6c39bc9a797",
+    "compatibility_date": "2025-03-01",
+    "compatibility_flags": ["nodejs_compat"],
+    "vars": {
+        "ENVIRONMENT": "production",
+        // Public base URL of the deployed worker; used to render onboarding snippets.
+        // Override per-deploy. Falls back to the request origin when unset.
+        "PUBLIC_BASE_URL": "https://tokenmaxer.quest",
     },
-  ],
-  "observability": {
-    "enabled": false,
-    "head_sampling_rate": 1,
-    "logs": {
-      "enabled": true,
-      "head_sampling_rate": 1,
-      "persist": true,
-      "invocation_logs": true,
+    "routes": [
+        {
+            "pattern": "tokenmaxer.quest",
+            "custom_domain": true,
+        },
+    ],
+    // Serve the reporter script as raw text (only matches our uniquely-named file).
+    "rules": [
+        {
+            "type": "Text",
+            "globs": ["**/tokentally.mjs", "**/app.css"],
+            "fallthrough": true,
+        },
+    ],
+    "observability": {
+        "enabled": false,
+        "head_sampling_rate": 1,
+        "logs": {
+            "enabled": true,
+            "head_sampling_rate": 1,
+            "persist": true,
+            "invocation_logs": true,
+        },
+        "traces": {
+            "enabled": false,
+            "persist": true,
+            "head_sampling_rate": 1,
+        },
     },
-    "traces": {
-      "enabled": false,
-      "persist": true,
-      "head_sampling_rate": 1,
-    },
-  },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "tokentally",
-      "database_id": "ea3bef1d-eca0-4762-9e67-945f0b04737f",
-      "migrations_dir": "drizzle",
-    },
-  ],
-  "kv_namespaces": [
-    {
-      "binding": "RATE_LIMIT",
-      "id": "879e8f2aeadd42488048bef1f3bf27ba",
-    },
-  ],
+    "d1_databases": [
+        {
+            "binding": "DB",
+            "database_name": "tokentally",
+            "database_id": "ea3bef1d-eca0-4762-9e67-945f0b04737f",
+            "migrations_dir": "drizzle",
+        },
+    ],
+    "kv_namespaces": [
+        {
+            "binding": "RATE_LIMIT",
+            "id": "879e8f2aeadd42488048bef1f3bf27ba",
+        },
+    ],
 }
