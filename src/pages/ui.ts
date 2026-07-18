@@ -1,34 +1,30 @@
-// Shared Tailwind utility bundles for the repeated component patterns that used
-// to be semantic CSS classes (.panel, .stat, .pill, …). Element-level typography
-// and form/table defaults live in src/styles/tailwind.css (@layer base).
+// Shared Tailwind class bundles for layout/typography patterns.
+// Interactive controls live in src/pages/components/{button,input}.tsx.
 
-export const sub = 'mb-6 text-muted';
+export const sub =
+    'mb-6 max-w-[52ch] text-[18px] leading-snug tracking-[-0.18px] text-muted';
 export const muted = 'text-muted';
-export const panel = 'rounded-xl border border-border bg-panel p-[18px]';
-export const empty = 'p-6 text-center text-muted';
+export const panel = 'rounded-lg bg-panel p-6';
+export const empty = 'p-8 text-center text-muted';
 export const num = 'text-right tabular-nums';
 
-export const filters = 'mb-[18px] flex flex-wrap gap-2.5';
-export const filterLabel = 'flex flex-col gap-1 text-xs text-muted';
-
-export const btnPrimary =
-    'cursor-pointer rounded-lg border-0 bg-accent px-4 py-2.5 text-sm font-bold text-bg hover:brightness-110';
-export const btnGhost =
-    'cursor-pointer rounded-lg border border-border bg-panel2 px-4 py-2.5 text-sm font-bold text-text hover:brightness-110';
-export const btnCopy =
-    'absolute right-2 top-2 cursor-pointer rounded-lg border border-border bg-panel2 px-2.5 py-[5px] text-xs font-bold text-text hover:brightness-110';
+export const filters = 'mb-5 flex flex-wrap items-end gap-3';
+export const filterLabel =
+    'flex flex-col gap-1.5 text-[13px] font-medium tracking-[-0.13px] text-muted';
 
 export const pill =
-    'inline-block rounded-full border border-border bg-panel2 px-2 py-0.5 text-xs text-muted';
+    'inline-block rounded-md bg-panel2 px-2.5 py-1 text-[12px] font-medium text-muted';
 
-export const statGrid =
-    'grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3';
-export const stat = 'rounded-[10px] border border-border bg-panel2 p-3.5';
-export const statK = 'text-xs uppercase tracking-[0.04em] text-muted';
-export const statV = 'mt-1 text-2xl font-extrabold tabular-nums';
+export const statGrid = 'grid grid-cols-1 gap-3 sm:grid-cols-2';
+export const stat = 'rounded-lg bg-panel p-5';
+export const statK = 'text-[13px] font-medium tracking-[-0.13px] text-muted';
+export const statV =
+    'mt-2 font-display text-[32px] font-medium tracking-[-1px] tabular-nums';
 
-export const notice =
-    'my-4 rounded-[10px] border border-accent/30 bg-accent/[0.08] px-3.5 py-3 text-sm';
+export const notice = 'my-4 rounded-lg bg-panel2 px-4 py-3.5 text-sm text-text';
 export const copyrow = 'relative';
 export const field = 'my-3.5 block';
-export const fieldLbl = 'mb-1.5 block text-xs text-muted';
+export const fieldLbl = 'mb-1.5 block text-[13px] font-medium text-muted';
+
+export const hero = 'mb-12 pt-8 pb-4 md:pt-16 md:pb-8';
+export const heroActions = 'mt-8 flex flex-wrap gap-3';

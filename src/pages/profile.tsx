@@ -1,9 +1,11 @@
 import type { FC } from 'hono/jsx';
 import type { Profile } from '@/lib/aggregate';
 import { formatDate, formatTokens, formatUsd } from '@/lib/format';
+import { Button } from '@/pages/components/button';
 import { Layout } from '@/pages/layout';
 import {
     empty,
+    hero,
     num,
     panel,
     pill,
@@ -11,7 +13,6 @@ import {
     statGrid,
     statK,
     statV,
-    sub,
 } from '@/pages/ui';
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -24,16 +25,18 @@ export const ProfilePage: FC<{ base: string; profile: Profile }> = ({
     profile: p,
 }) => (
     <Layout
-        title={`${p.username} · TokenTally`}
+        title={`${p.username} · tokenmaxer.quest`}
         base={base}
     >
-        <h1>{p.username}</h1>
-        <p class={sub}>
-            <span class={pill}>Rank #{p.rank}</span> &nbsp; joined{' '}
-            {formatDate(p.created_at)} · {p.sessions} sessions tracked
-        </p>
+        <section class={hero}>
+            <h1 class="reveal">{p.username}</h1>
+            <p class="reveal reveal-delay mb-0 max-w-[52ch] text-[18px] leading-snug tracking-[-0.18px] text-muted">
+                Rank #{p.rank} · joined {formatDate(p.created_at)} ·{' '}
+                {p.sessions} sessions tracked
+            </p>
+        </section>
 
-        <div class={statGrid}>
+        <div class={`${statGrid} mb-10`}>
             <div class={stat}>
                 <div class={statK}>Total tokens</div>
                 <div class={statV}>{formatTokens(p.grand_total)}</div>
@@ -62,54 +65,75 @@ export const ProfilePage: FC<{ base: string; profile: Profile }> = ({
             </div>
         </div>
 
-        <h2>By model</h2>
-        <div class={panel}>
-            {p.breakdown.length === 0 ? (
-                <div class={empty}>No usage reported yet.</div>
-            ) : (
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Source</th>
-                            <th>Model</th>
-                            <th class={num}>Total</th>
-                            <th class={num}>Output</th>
-                            <th class={num}>Est. cost</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {p.breakdown.map((b) => (
-                            <tr key={`${b.source}:${b.model}`}>
-                                <td>
-                                    <span class={pill}>
-                                        {SOURCE_LABELS[b.source] ?? b.source}
-                                    </span>
-                                </td>
-                                <td>
-                                    <code>{b.model}</code>
-                                </td>
-                                <td class={num}>
-                                    {formatTokens(
-                                        b.input_tokens +
-                                            b.output_tokens +
-                                            b.cache_read_tokens +
-                                            b.cache_creation_tokens +
-                                            b.reasoning_tokens,
-                                    )}
-                                </td>
-                                <td class={num}>
-                                    {formatTokens(b.output_tokens)}
-                                </td>
-                                <td class={num}>{formatUsd(b.cost)}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            )}
-        </div>
+        <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+            <div>
+                <h2 class="mt-0">By model</h2>
+                <div class={panel}>
+                    {p.breakdown.length === 0 ? (
+                        <div class={empty}>No usage reported yet.</div>
+                    ) : (
+                        <div class="overflow-x-auto">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Source</th>
+                                        <th>Model</th>
+                                        <th class={num}>Total</th>
+                                        <th class={num}>Output</th>
+                                        <th class={num}>Est. cost</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {p.breakdown.map((b) => (
+                                        <tr key={`${b.source}:${b.model}`}>
+                                            <td>
+                                                <span class={pill}>
+                                                    {SOURCE_LABELS[b.source] ??
+                                                        b.source}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <code>{b.model}</code>
+                                            </td>
+                                            <td class={num}>
+                                                {formatTokens(
+                                                    b.input_tokens +
+                                                        b.output_tokens +
+                                                        b.cache_read_tokens +
+                                                        b.cache_creation_tokens +
+                                                        b.reasoning_tokens,
+                                                )}
+                                            </td>
+                                            <td class={num}>
+                                                {formatTokens(b.output_tokens)}
+                                            </td>
+                                            <td class={num}>
+                                                {formatUsd(b.cost)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            </div>
 
-        <p class={`${sub} mt-6`}>
-            <a href="/">← Back to leaderboard</a>
-        </p>
+            <aside class="spotlight spotlight-violet h-fit">
+                <p class="mb-3 text-[13px] font-medium tracking-[-0.13px] text-white/80">
+                    Keep climbing
+                </p>
+                <p class="mb-6 text-[22px] leading-snug tracking-[-0.01px]">
+                    Back to the board, or claim another machine with the same
+                    hooks.
+                </p>
+                <Button
+                    variant="primary"
+                    href="/"
+                >
+                    View leaderboard
+                </Button>
+            </aside>
+        </div>
     </Layout>
 );

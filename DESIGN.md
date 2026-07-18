@@ -2,7 +2,7 @@
 
 Framer's marketing canvas is a near-pure black artboard. The dominant surface is `{colors.canvas}` — almost pure black with a faint warmth — and on top of it sits oversized white display type set in **GT Walsheim Medium** with letter-spacing pulled to extreme negative values (-5.5px on the 110px display, -4.25px on the 85px hero). The page reads like a poster: one assertive statement per band, generous breathing room above and below.
 
-The single accent is `{colors.accent-blue}` — used scarcely, mostly for hyperlinks, selection halos, and a subtle blue-tinted shadow ring on focused inputs. The brand chrome itself is monochrome: white pill buttons, charcoal cards, gray secondary text. What makes Framer distinctive is the rhythm break — every few sections the page drops in a **vibrant gradient atmosphere card**: a magenta-violet spotlight, a sunset-orange wash, a coral-pink panel. These aren't section backgrounds; they're individual cards arranged in a card grid, each one a small living poster that shows what Framer can produce.
+The single accent is `{colors.accent-blue}` — used scarcely, mostly for hyperlinks, selection halos, and a subtle blue-tinted shadow ring on focused inputs. The brand chrome itself is monochrome: white pill buttons, charcoal cards, gray secondary text. What makes the marketing surface distinctive is the rhythm break — every few sections the page drops in a **vibrant aurora atmosphere card**: cool indigo/electric blue/magenta on the left flowing into coral and peach on the right, with a film-grain overlay and slow 3D drift. No near-white bands. These aren't section backgrounds; they're individual cards arranged in a card grid, each one a small living poster.
 
 Body type is **Inter Variable**, with Framer leaning hard into Inter's character variants (`cv01`, `cv05`, `cv09`, `cv11`, `ss03`, `ss07`, `dlig`) — the result is a body voice that feels custom-tuned, with single-storey "a", straight-leg "l", and tabular figures. There's no light mode on the marketing site; the brand IS dark.
 
@@ -11,7 +11,7 @@ Body type is **Inter Variable**, with Framer leaning hard into Inter's character
 - Black-canvas marketing system: `{colors.canvas}` is the surface for hero, body, pricing, FAQ, and footer alike — no light interludes.
 - Massive negative letter-spacing on display sizes (-5.5px / -4.25px / -3.1px) creates a poster-grade headline cadence.
 - White pill (`{components.button-primary}`) is the only primary CTA shape across the site; secondary actions live as charcoal pills (`{components.button-secondary}`) or text links.
-- Oversized **gradient spotlight cards** (violet, magenta, orange, coral) act as showcase tiles inside the dark grid; they are individual cards, not section backgrounds.
+- Oversized **aurora spotlight cards** (shared indigo / blue / magenta / coral / peach palette, four blob compositions, slow 3D motion) act as showcase tiles inside the dark grid; they are individual cards, not section backgrounds.
 - Inter Variable with bespoke OpenType character variants (`cv01/05/09/11`, `ss03/ss07`, `dlig`) used everywhere body type appears — the typographic voice is unmistakable.
 - Border radius scale runs from 4px utility chips up to 100px pills and full circles, with 15–20px the default for cards and 30px for atmospheric gradient cards.
 - A single chromatic accent `{colors.accent-blue}` reserved for hyperlinks, focus, and selection — never decorative.
@@ -43,14 +43,25 @@ Body type is **Inter Variable**, with Framer leaning hard into Inter's character
 
 - **Success Green** ({colors.semantic-success}): Pricing comparison-table checkmarks. Glyph fill, not surface.
 
-### Brand Gradient (signature)
+### Aurora Mesh Palette (signature)
 
-- **Gradient Magenta** ({colors.gradient-magenta}): Spotlight card variant.
-- **Gradient Violet** ({colors.gradient-violet}): Spotlight card variant — most common.
-- **Gradient Orange** ({colors.gradient-orange}): Spotlight card variant — sunset wash.
-- **Gradient Coral** ({colors.gradient-coral}): Spotlight card variant — coral/pink.
+Spotlight cards share one aurora family. Class names (`spotlight-violet`, `spotlight-magenta`, `spotlight-orange`, `spotlight-coral`) remain for markup compatibility; each variant is a different blob composition of the same colors, not a different hue family.
 
-These four sit as oversized atmospheric tiles inside otherwise monochrome card grids — a dark canvas with one or two glowing spotlight cards is a recurring page signature.
+| Token                      | Hex       | Role                                                       |
+| -------------------------- | --------- | ---------------------------------------------------------- |
+| `{colors.aurora-deep}`     | `#241f55` | Deep indigo base / fallback                                |
+| `{colors.aurora-indigo}`   | `#3b3582` | Cool mass (left edge)                                      |
+| `{colors.aurora-blue}`     | `#3d31fd` | Electric blue accent blob                                  |
+| `{colors.aurora-magenta}`  | `#a827e1` | Violet/magenta (lower-left)                                |
+| `{colors.aurora-lavender}` | `#7a5fa0` | Dusty lavender (upper-right falloff)                       |
+| `{colors.aurora-coral}`    | `#e85d6a` | Coral-pink transition                                      |
+| `{colors.aurora-peach}`    | `#e89970` | Warm peach mass (center/right; slightly deepened for type) |
+
+**Construction:** mesh lives on `::before` as layered `radial-gradient` ellipses (cool left → warm right) over a deep linear fallback; film-grain on `::after` (`feTurbulence`, `mix-blend-mode: overlay`). No near-white bands. Soft text-shadow keeps white copy readable on peach.
+
+**Motion** (only when `prefers-reduced-motion: no-preference`): card tilts slowly in perspective (`tmq-spotlight-tilt`); mesh layer drifts/scales behind the text (`tmq-aurora-drift`).
+
+These sit as oversized atmospheric tiles inside otherwise monochrome card grids — a dark canvas with one or two glowing spotlight cards is a recurring page signature.
 
 ## Typography
 
@@ -121,7 +132,7 @@ Four shadow signatures recur across the homepage: a 1px subtle drop, a transluce
 
 ### Decorative Depth
 
-- **Gradient spotlight cards** are the dominant depth device — color saturation against black canvas substitutes for shadow-driven elevation.
+- **Aurora spotlight cards** are the dominant depth device — mesh color + grain against black canvas substitutes for shadow-driven elevation.
 - **Layered product mockups** (browser frames containing live Framer-built sites) sit inside `{colors.surface-1}` cards with the level-2 light-edge treatment.
 - **Subtle blue ring (focus / selected)** is the only chromatic depth signal — used to mark the active state of input groups and pricing tier toggles without changing the underlying surface.
 
@@ -203,21 +214,19 @@ Framer's extracted radius set is unusually granular (1px, 4px, 5px, 6px, 8px, 10
 
 ### Gradient Spotlight Cards (signature)
 
-The defining decorative surface of Framer's marketing — oversized atmospheric tiles dropped into otherwise monochrome card grids. Variants:
+The defining decorative surface — oversized aurora tiles dropped into otherwise monochrome card grids. All variants use the aurora mesh palette; they differ only by blob placement:
 
-**`gradient-spotlight-card`** — violet ground (most common).
+**`gradient-spotlight-card`** (`.spotlight-violet`) — indigo/blue left, coral mid, peach right. Most common.
 
-- Background `{colors.gradient-violet}`, text `{colors.ink}`, type `{typography.subhead}`, rounded `{rounded.xl}`, padding 32px. (The on-site card often pushes to `{rounded.xxl}` 30px when it spans a wider tile.)
+- Background: aurora mesh composition A on `::before`, text `{colors.ink}`, type `{typography.subhead}`, rounded `{rounded.xl}`, padding 32px. (Wider tiles may use `{rounded.xxl}` 30px.)
 
-**`gradient-spotlight-card-magenta`** — magenta-pink ground.
+**`gradient-spotlight-card-magenta`** (`.spotlight-magenta`) — magenta-heavy lower-left, peach dominating the right.
 
-- Background `{colors.gradient-magenta}`, otherwise identical.
+**`gradient-spotlight-card-orange`** (`.spotlight-orange`) — peach-forward wash with cool accents on the left edge.
 
-**`gradient-spotlight-card-orange`** — sunset-orange wash.
+**`gradient-spotlight-card-coral`** (`.spotlight-coral`) — coral bridge between indigo left and peach right.
 
-- Background `{colors.gradient-orange}`, otherwise identical.
-
-(Coral pink follows the same shape with `{colors.gradient-coral}`.)
+Every spotlight card also gets the shared film-grain overlay and (when motion is allowed) the 3D tilt + mesh drift.
 
 ### Comparison & FAQ
 
@@ -263,7 +272,7 @@ The defining decorative surface of Framer's marketing — oversized atmospheric 
 - Don't square off CTAs. Pill (`{rounded.pill}`) or full circle is the brand vocabulary.
 - Don't reduce the negative letter-spacing on display sizes "for accessibility". The compression is intrinsic to the brand voice; reduce the SIZE if needed, but keep the percentage.
 - Don't apply gradient backgrounds to whole sections. Gradients are CARDS, not section grounds.
-- Don't combine more than one chromatic accent. The palette is monochrome plus one blue plus the gradient family — not "blue, green, and red".
+- Don't combine more than one chromatic accent outside the aurora family. Chrome is monochrome plus signal blue; spotlight atmosphere is indigo / blue / magenta / coral / peach only — no cream/white bands, no burnt-orange sunset wash.
 
 ## Responsive Behavior
 
@@ -292,7 +301,7 @@ The defining decorative surface of Framer's marketing — oversized atmospheric 
 ### Image Behavior
 
 - Embedded product mockups (browser frames containing live Framer-built sites) maintain their aspect ratio and never crop.
-- Gradient spotlight cards keep their gradient orientations across breakpoints — the gradient direction is part of the brand spec.
+- Gradient spotlight cards keep their blob compositions across breakpoints — composition (not a single linear angle) is part of the brand spec.
 
 ## Iteration Guide
 
@@ -306,7 +315,7 @@ The defining decorative surface of Framer's marketing — oversized atmospheric 
 
 ## Known Gaps
 
-- The exact gradient stops for the spotlight cards are derived from screenshot pixels rather than from CSS variables — the production gradients are likely defined as `linear-gradient` strings on individual elements rather than as design tokens. Treat the documented `{colors.gradient-*}` hex values as base anchors, not as exact gradient specs.
+- Aurora colors are design tokens in `src/styles/tailwind.css` (`--color-aurora-*`). Spotlight compositions are layered `radial-gradient` stacks that reference those tokens; treat the documented hex values as the palette anchors, and adjust ellipse positions when tuning atmosphere.
 - Form-field validation / error styling is not visible on the inspected pages because no error states render in the static screenshots.
 - Dark mode is the only mode — no light-mode adaptation is documented because the marketing site does not ship one.
 - The marketplace template detail page returned sparser CSS variable data than the other pages; surface tokens for that page were inferred from the matching home / gallery treatment rather than extracted directly.

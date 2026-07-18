@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <!-- OG 1200x630: dark canvas, Capsule Ladder + Type B -->
+  <rect width="1200" height="630" fill="#0A0A0A"/>
+  <rect width="1200" height="1" fill="#FFFFFF" opacity="0.06"/>
+
+  <!-- Mark -->
+  <g transform="translate(100, 210)" fill="#FFFFFF">
+    <rect x="0" y="120" width="108" height="36" rx="18" opacity="0.4"/>
+    <rect x="30" y="60" width="108" height="36" rx="18" opacity="0.7"/>
+    <rect x="60" y="0" width="108" height="36" rx="18"/>
+  </g>
+
+  <!--
+    Type B wordmark as separate tspans for weight split.
+    Positions tuned for Helvetica Neue metrics at 96px.
+  -->
+  <text
+    x="320" y="345"
+    font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+    font-size="96"
+    fill="#FFFFFF"
+    letter-spacing="-5"
+  >
+    <tspan font-weight="400">token</tspan><tspan font-weight="900">maxer</tspan><tspan font-weight="400" fill="#999999" letter-spacing="-3">.quest</tspan>
+  </text>
+
+  <text
+    x="320" y="410"
+    font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+    font-size="28"
+    font-weight="400"
+    letter-spacing="-0.3"
+    fill="#999999"
+  >Token leaderboard for AI builders</text>
+</svg>

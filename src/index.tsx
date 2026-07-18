@@ -5,6 +5,7 @@ import { About } from '@/pages/about';
 import { Home } from '@/pages/home';
 import { Layout } from '@/pages/layout';
 import { ProfilePage } from '@/pages/profile';
+import { parseChartMetric, parsePeriod } from '@/pages/prototype/chart-mock';
 import { Start } from '@/pages/start';
 import { sub } from '@/pages/ui';
 import { historyRoutes } from '@/routes/history';
@@ -67,6 +68,9 @@ app.get('/tokentally.mjs', (c) =>
     }),
 );
 
+// Browsers still request /favicon.ico by default; SVG lives in public/.
+app.get('/favicon.ico', (c) => c.redirect('/favicon.svg', 302));
+
 // ---- HTML pages ----
 app.get('/', async (c) => {
     const window = parseWindow(c.req.query('window'));
@@ -75,6 +79,17 @@ app.get('/', async (c) => {
     const modelRaw = c.req.query('model');
     const model = modelRaw && modelRaw.length > 0 ? modelRaw : undefined;
     const base = baseUrl(c.env, c.req.url);
+
+    // PROTOTYPE chart UI — only when ?variant= is present (not shipped by default).
+    const variantRaw = c.req.query('variant');
+    const chartPrototype =
+        variantRaw && ['A', 'B', 'C'].includes(variantRaw)
+            ? {
+                  variant: variantRaw,
+                  period: parsePeriod(c.req.query('period')),
+                  chartMetric: parseChartMetric(c.req.query('chartMetric')),
+              }
+            : undefined;
 
     const [entries, models] = await Promise.all([
         getLeaderboard(
@@ -93,6 +108,7 @@ app.get('/', async (c) => {
             metric={metric}
             source={source}
             model={model}
+            chartPrototype={chartPrototype}
         />,
     );
 });
@@ -106,7 +122,7 @@ app.get('/u/:username', async (c) => {
     if (!profile) {
         return c.html(
             <Layout
-                title="Not found · TokenTally"
+                title="Not found · tokenmaxer.quest"
                 base={base}
             >
                 <h1>Builder not found</h1>

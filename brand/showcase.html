@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+        />
+        <title>tokenmaxer.quest — Brand</title>
+        <link
+            rel="preconnect"
+            href="https://fonts.googleapis.com"
+        />
+        <link
+            rel="preconnect"
+            href="https://fonts.gstatic.com"
+            crossorigin
+        />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Mona+Sans:wght@500;600;700;800;900&family=Inter:opsz,wght@14..32,400;14..32,500&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            :root {
+                --canvas: #0a0a0a;
+                --surface-1: #161616;
+                --surface-2: #1f1f1f;
+                --ink: #ffffff;
+                --ink-muted: #999999;
+                --hairline: rgba(255, 255, 255, 0.08);
+            }
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            body {
+                background: var(--canvas);
+                color: var(--ink);
+                font-family: Inter, system-ui, sans-serif;
+                -webkit-font-smoothing: antialiased;
+                min-height: 100vh;
+            }
+            .wrap {
+                max-width: 960px;
+                margin: 0 auto;
+                padding: 96px 32px 120px;
+            }
+            .eyebrow {
+                font-size: 13px;
+                font-weight: 500;
+                color: var(--ink-muted);
+                margin-bottom: 20px;
+            }
+            h1 {
+                font-family: 'Mona Sans', system-ui, sans-serif;
+                font-weight: 500;
+                font-size: clamp(40px, 7vw, 64px);
+                line-height: 0.92;
+                letter-spacing: -0.05em;
+                margin-bottom: 12px;
+            }
+            h1 .max {
+                font-weight: 900;
+            }
+            h1 .tld {
+                color: var(--ink-muted);
+                font-weight: 500;
+            }
+            .lede {
+                font-size: 16px;
+                line-height: 1.35;
+                color: var(--ink-muted);
+                max-width: 42ch;
+                margin-bottom: 56px;
+            }
+            .section-title {
+                font-family: 'Mona Sans', system-ui, sans-serif;
+                font-weight: 600;
+                font-size: 22px;
+                letter-spacing: -0.8px;
+                margin: 0 0 20px;
+            }
+            .lockups {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 16px;
+            }
+            @media (max-width: 700px) {
+                .lockups {
+                    grid-template-columns: 1fr;
+                }
+            }
+            .lockup-card {
+                background: var(--surface-1);
+                border-radius: 20px;
+                padding: 36px 28px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 140px;
+                gap: 16px;
+                position: relative;
+            }
+            .lockup-card.wide {
+                grid-column: 1 / -1;
+                min-height: 180px;
+                gap: 20px;
+            }
+            .lockup-card.stack {
+                flex-direction: column;
+                gap: 18px;
+                text-align: center;
+            }
+            .lockup-card.invert {
+                background: #fff;
+                color: #0a0a0a;
+            }
+            .lockup-card .mark {
+                width: 44px;
+                height: 44px;
+                flex-shrink: 0;
+            }
+            .lockup-card.wide .mark {
+                width: 56px;
+                height: 56px;
+            }
+            .lockup-card.stack .mark {
+                width: 64px;
+                height: 64px;
+            }
+            .lockup-card.nav {
+                justify-content: space-between;
+                padding: 18px 24px;
+                min-height: 72px;
+            }
+            .lockup-card.nav .left {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+            .lockup-card.nav .mark {
+                width: 28px;
+                height: 28px;
+            }
+            .pill {
+                background: #fff;
+                color: #0a0a0a;
+                border-radius: 100px;
+                padding: 10px 15px;
+                font-size: 14px;
+                font-weight: 500;
+                font-family: 'Mona Sans', system-ui, sans-serif;
+            }
+            .lockup-card.invert .pill {
+                background: #0a0a0a;
+                color: #fff;
+            }
+            .wm {
+                font-family: 'Mona Sans', system-ui, sans-serif;
+                font-weight: 500;
+                font-size: clamp(22px, 3.5vw, 32px);
+                letter-spacing: -0.05em;
+                line-height: 1;
+            }
+            .wm.lg {
+                font-size: clamp(36px, 6vw, 56px);
+                letter-spacing: -0.055em;
+            }
+            .wm.sm {
+                font-size: 14px;
+                letter-spacing: -0.02em;
+                font-weight: 600;
+            }
+            .wm .max {
+                font-weight: 900;
+            }
+            .wm .tld {
+                color: var(--ink-muted);
+                font-weight: 500;
+            }
+            .lockup-card.invert .wm .tld {
+                color: rgba(10, 10, 10, 0.45);
+            }
+            .tag {
+                position: absolute;
+                top: 14px;
+                left: 18px;
+                font-size: 11px;
+                color: var(--ink-muted);
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+            }
+            .lockup-card.invert .tag {
+                color: rgba(10, 10, 10, 0.4);
+            }
+            .mark-solo {
+                margin-top: 48px;
+                background: var(--surface-1);
+                border-radius: 20px;
+                padding: 48px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: var(--ink);
+            }
+            .mark-solo svg {
+                width: 96px;
+                height: 96px;
+            }
+            .footer {
+                margin-top: 64px;
+                padding-top: 24px;
+                border-top: 1px solid var(--hairline);
+                font-size: 13px;
+                color: var(--ink-muted);
+            }
+            .footer code {
+                color: var(--ink);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <p class="eyebrow">Locked brand · Capsule Ladder × Type B</p>
+            <h1>
+                token<span class="max">maxer</span
+                ><span class="tld">.quest</span>
+            </h1>
+            <p class="lede">
+                Final mark and wordmark lockups. Assets in
+                <code>brand/logo/</code>; live in site nav/footer via
+                <code>layout.tsx</code>.
+            </p>
+
+            <h2 class="section-title">Lockups</h2>
+            <div class="lockups">
+                <div class="lockup-card wide">
+                    <span class="tag">Hero · horizontal</span>
+                    <svg
+                        class="mark"
+                        viewBox="0 0 100 100"
+                        fill="none"
+                    >
+                        <g fill="currentColor">
+                            <rect
+                                x="22"
+                                y="68"
+                                width="36"
+                                height="12"
+                                rx="6"
+                                opacity="0.4"
+                            />
+                            <rect
+                                x="32"
+                                y="48"
+                                width="36"
+                                height="12"
+                                rx="6"
+                                opacity="0.7"
+                            />
+                            <rect
+                                x="42"
+                                y="28"
+                                width="36"
+                                height="12"
+                                rx="6"
+                            />
+                        </g>
+                    </svg>
+                    <div class="wm lg">
+                        token<span class="max">maxer</span
+                        ><span class="tld">.quest</span>
+                    </div>
+                </div>
+
+                <div class="lockup-card wide invert">
+                    <span class="tag">Hero · inverse</span>
+                    <svg
+                        class="mark"
+                        viewBox="0 0 100 100"
+                        fill="none"
+                    >
+                        <g fill="currentColor">
+                            <rect
+                                x="22"
+                                y="68"
+                                width="36"
+                                height="12"
+                                rx="6"
+                                opacity="0.4"
+                            />
+                            <rect
+                                x="32"
+                                y="48"
+                                width="36"
+                                height="12"
+                                rx="6"
+                                opacity="0.7"
+                            />
+                            <rect
+                                x="42"
+                                y="28"
+                                width="36"
+                                height="12"
+                                rx="6"
+                            />
+                        </g>
+                    </svg>
+                    <div class="wm lg">
+                        token<span class="max">maxer</span
+                        ><span class="tld">.quest</span>
+                    </div>
+                </div>
+
+                <div class="lockup-card stack">
+                    <span class="tag">Stacked</span>
+                    <svg
+                        class="mark"
+                        viewBox="0 0 100 100"
+                        fill="none"
+                    >
+                        <g fill="currentColor">
+                            <rect
+                                x="22"
+                                y="68"
+                                width="36"
+                                height="12"
+                                rx="6"
+                                opacity="0.4"
+                            />
+                            <rect
+                                x="32"
+                                y="48"
+                                width="36"
+                                height="12"
+                                rx="6"
+                                opacity="0.7"
+                            />
+                            <rect
+                                x="42"
+                                y="28"
+                                width="36"
+                                height="12"
+                                rx="6"
+                            />
+                        </g>
+                    </svg>
+                    <div class="wm">
+                        token<span class="max">maxer</span
+                        ><span class="tld">.quest</span>
+                    </div>
+                </div>
+
+                <div class="lockup-card stack invert">
+                    <span class="tag">Stacked · inverse</span>
+                    <svg
+                        class="mark"
+                        viewBox="0 0 100 100"
+                        fill="none"
+                    >
+                        <g fill="currentColor">
+                            <rect
+                                x="22"
+                                y="68"
+                                width="36"
+                                height="12"
+                                rx="6"
+                                opacity="0.4"
+                            />
+                            <rect
+                                x="32"
+                                y="48"
+                                width="36"
+                                height="12"
+                                rx="6"
+                                opacity="0.7"
+                            />
+                            <rect
+                                x="42"
+                                y="28"
+                                width="36"
+                                height="12"
+                                rx="6"
+                            />
+                        </g>
+                    </svg>
+                    <div class="wm">
+                        token<span class="max">maxer</span
+                        ><span class="tld">.quest</span>
+                    </div>
+                </div>
+
+                <div class="lockup-card nav">
+                    <div class="left">
+                        <svg
+                            class="mark"
+                            viewBox="0 0 100 100"
+                            fill="none"
+                        >
+                            <g fill="currentColor">
+                                <rect
+                                    x="22"
+                                    y="68"
+                                    width="36"
+                                    height="12"
+                                    rx="6"
+                                    opacity="0.4"
+                                />
+                                <rect
+                                    x="32"
+                                    y="48"
+                                    width="36"
+                                    height="12"
+                                    rx="6"
+                                    opacity="0.7"
+                                />
+                                <rect
+                                    x="42"
+                                    y="28"
+                                    width="36"
+                                    height="12"
+                                    rx="6"
+                                />
+                            </g>
+                        </svg>
+                        <div class="wm sm">
+                            token<span class="max">maxer</span
+                            ><span class="tld">.quest</span>
+                        </div>
+                    </div>
+                    <span class="pill">Get started</span>
+                </div>
+
+                <div class="lockup-card nav invert">
+                    <div class="left">
+                        <svg
+                            class="mark"
+                            viewBox="0 0 100 100"
+                            fill="none"
+                        >
+                            <g fill="currentColor">
+                                <rect
+                                    x="22"
+                                    y="68"
+                                    width="36"
+                                    height="12"
+                                    rx="6"
+                                    opacity="0.4"
+                                />
+                                <rect
+                                    x="32"
+                                    y="48"
+                                    width="36"
+                                    height="12"
+                                    rx="6"
+                                    opacity="0.7"
+                                />
+                                <rect
+                                    x="42"
+                                    y="28"
+                                    width="36"
+                                    height="12"
+                                    rx="6"
+                                />
+                            </g>
+                        </svg>
+                        <div class="wm sm">
+                            token<span class="max">maxer</span
+                            ><span class="tld">.quest</span>
+                        </div>
+                    </div>
+                    <span class="pill">Get started</span>
+                </div>
+            </div>
+
+            <div
+                class="mark-solo"
+                aria-label="Mark only"
+            >
+                <svg
+                    viewBox="0 0 100 100"
+                    fill="none"
+                >
+                    <g fill="currentColor">
+                        <rect
+                            x="22"
+                            y="68"
+                            width="36"
+                            height="12"
+                            rx="6"
+                            opacity="0.4"
+                        />
+                        <rect
+                            x="32"
+                            y="48"
+                            width="36"
+                            height="12"
+                            rx="6"
+                            opacity="0.7"
+                        />
+                        <rect
+                            x="42"
+                            y="28"
+                            width="36"
+                            height="12"
+                            rx="6"
+                        />
+                    </g>
+                </svg>
+            </div>
+
+            <div class="footer">
+                <code>brand/logo/mark.svg</code> · Type B in CSS
+                <code>.wm .max</code> / <code>.wm .tld</code>
+            </div>
+        </div>
+    </body>
+</html>
