@@ -32,8 +32,8 @@
         "vitest": "^3.2.7",
         "wrangler": "^3.99.0"
     },
-    "packageManager": "pnpm@11.13.1",
     "engines": {
         "node": ">=24"
-    }
+    },
+    "packageManager": "pnpm@11.13.1"
 }

@@ -114,7 +114,8 @@ describe('parseCodexRollout', () => {
         const o3 = parsed.models.get('o3');
         expect(gpt).toBeDefined();
         expect(o3).toBeDefined();
-        if (!gpt || !o3) throw new Error('expected gpt-5-codex and o3 model usage');
+        if (!gpt || !o3)
+            throw new Error('expected gpt-5-codex and o3 model usage');
         expect(gpt.input_tokens).toBe(120);
         expect(gpt.cache_read_tokens).toBe(20);
         expect(gpt.reasoning_tokens).toBe(10);
