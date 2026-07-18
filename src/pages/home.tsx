@@ -3,6 +3,12 @@ import type { LeaderboardEntry } from '@/lib/aggregate';
 import { formatTokens, formatUsd } from '@/lib/format';
 import { Layout } from '@/pages/layout';
 import {
+    type ChartMetric,
+    type ChartPeriod,
+} from '@/pages/prototype/chart-mock';
+import { ChartPrototype } from '@/pages/prototype/chart-variants';
+import { PrototypeSwitcher } from '@/pages/prototype/switcher';
+import {
     btnPrimary,
     empty,
     filterLabel,
@@ -34,6 +40,12 @@ interface HomeProps {
     metric: Metric;
     source: Source | undefined;
     model: string | undefined;
+    /** PROTOTYPE: when set, mounts chart variants + switcher above the board. */
+    chartPrototype?: {
+        variant: string;
+        period: ChartPeriod;
+        chartMetric: ChartMetric;
+    };
 }
 
 const RANK_COLOR: Record<number, string> = {
@@ -57,6 +69,14 @@ export const Home: FC<HomeProps> = (p) => (
             Ranked by <strong>{METRIC_LABELS[p.metric]}</strong> ·{' '}
             {WINDOW_LABELS[p.window]}.
         </p>
+
+        {p.chartPrototype ? (
+            <ChartPrototype
+                variant={p.chartPrototype.variant}
+                period={p.chartPrototype.period}
+                metric={p.chartPrototype.chartMetric}
+            />
+        ) : null}
 
         <form
             class={filters}
@@ -195,5 +215,9 @@ export const Home: FC<HomeProps> = (p) => (
                 </table>
             )}
         </div>
+
+        {p.chartPrototype ? (
+            <PrototypeSwitcher current={p.chartPrototype.variant} />
+        ) : null}
     </Layout>
 );

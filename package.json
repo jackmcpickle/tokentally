@@ -8,6 +8,7 @@
         "build:css": "tailwindcss -i src/styles/tailwind.css -o src/styles/app.css --minify",
         "build:css:watch": "tailwindcss -i src/styles/tailwind.css -o src/styles/app.css --watch",
         "dev": "pnpm build:css && wrangler dev",
+        "prototype:charts": "pnpm build:css && wrangler dev",
         "deploy": "pnpm build:css && wrangler deploy --minify",
         "test": "vitest run",
         "test:watch": "vitest",
