@@ -15,6 +15,7 @@
 //   node tokentally.mjs codex-sessionstart     # hook: catch up recent Codex sessions
 //   node tokentally.mjs claude-report <path>   # parse one Claude transcript
 //   node tokentally.mjs codex-report <path>    # parse one Codex rollout
+//   node tokentally.mjs backfill [claude|codex] # one-time: upload ALL past history
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -24,6 +25,8 @@ import { pathToFileURL } from 'node:url';
 const CATCHUP_DAYS =
     Number.parseInt(process.env.TOKENTALLY_DAYS ?? '3', 10) || 3;
 const MAX_SESSIONS_PER_REQUEST = 200;
+// Bulk history backfill posts to a separate endpoint in larger chunks.
+const HISTORY_CHUNK = 500;
 
 // ---------------------------------------------------------------- parsing ----
 
@@ -264,11 +267,11 @@ async function readStdin() {
     return Buffer.concat(chunks).toString('utf8');
 }
 
-async function postBatch(cfg, source, batch) {
+async function postBatch(cfg, source, batch, path) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10_000);
     try {
-        const res = await fetch(`${cfg.apiBase}/api/ingest`, {
+        const res = await fetch(`${cfg.apiBase}${path}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -290,14 +293,16 @@ async function postBatch(cfg, source, batch) {
     }
 }
 
-async function postSessions(cfg, source, rows) {
+async function postSessions(cfg, source, rows, opts = {}) {
     if (rows.length === 0) return { accepted: 0 };
+    const path = opts.path ?? '/api/ingest';
+    const chunkSize = opts.chunkSize ?? MAX_SESSIONS_PER_REQUEST;
     const batches = [];
-    for (let i = 0; i < rows.length; i += MAX_SESSIONS_PER_REQUEST) {
-        batches.push(rows.slice(i, i + MAX_SESSIONS_PER_REQUEST));
+    for (let i = 0; i < rows.length; i += chunkSize) {
+        batches.push(rows.slice(i, i + chunkSize));
     }
     const acceptedCounts = await Promise.all(
-        batches.map((batch) => postBatch(cfg, source, batch)),
+        batches.map((batch) => postBatch(cfg, source, batch, path)),
     );
     return { accepted: acceptedCounts.reduce((sum, n) => sum + n, 0) };
 }
@@ -371,6 +376,47 @@ function safeParse(path, source) {
     }
 }
 
+/**
+ * One-time bulk backfill: scan ALL local Claude/Codex transcripts (ignoring the
+ * catch-up window) and POST them to /api/history. Idempotent, so it's safe to
+ * run alongside the normal hooks and safe to re-run. Pass 'claude' or 'codex' to
+ * limit the scan to one tool.
+ */
+async function backfill(cfg, only) {
+    let total = 0;
+    if (only !== 'codex') {
+        const files = claudeDirs().flatMap((d) =>
+            walkJsonl(d, 0, (n) => n.endsWith('.jsonl')),
+        );
+        const rows = files.flatMap((f) => safeParse(f, 'claude_code'));
+        const { accepted } = await postSessions(cfg, 'claude_code', rows, {
+            path: '/api/history',
+            chunkSize: HISTORY_CHUNK,
+        });
+        total += accepted;
+        process.stderr.write(
+            `tokentally: backfilled ${accepted} Claude Code row(s) from ${files.length} file(s)\n`,
+        );
+    }
+    if (only !== 'claude') {
+        const files = codexDirs().flatMap((d) =>
+            walkJsonl(d, 0, (n) => /^rollout-.*\.jsonl$/iu.test(n)),
+        );
+        const rows = files.flatMap((f) => safeParse(f, 'codex'));
+        const { accepted } = await postSessions(cfg, 'codex', rows, {
+            path: '/api/history',
+            chunkSize: HISTORY_CHUNK,
+        });
+        total += accepted;
+        process.stderr.write(
+            `tokentally: backfilled ${accepted} Codex row(s) from ${files.length} file(s)\n`,
+        );
+    }
+    process.stderr.write(
+        `tokentally: backfill complete — ${total} row(s) total\n`,
+    );
+}
+
 async function reportOne(cfg, path, source) {
     const rows = parseFile(path, source);
     const { accepted } = await postSessions(cfg, source, rows);
@@ -397,9 +443,18 @@ async function main() {
         case 'codex-report':
             await reportOne(cfg, process.argv[3], 'codex');
             break;
+        case 'backfill': {
+            // Optional scope: `backfill claude` | `backfill codex`.
+            const only =
+                process.argv[3] === 'claude' || process.argv[3] === 'codex'
+                    ? process.argv[3]
+                    : undefined;
+            await backfill(cfg, only);
+            break;
+        }
         default:
             process.stderr.write(
-                'usage: tokentally.mjs <claude-sessionend|claude-sessionstart|codex-sessionstart|claude-report <path>|codex-report <path>>\n',
+                'usage: tokentally.mjs <claude-sessionend|claude-sessionstart|codex-sessionstart|claude-report <path>|codex-report <path>|backfill [claude|codex]>\n',
             );
     }
 }

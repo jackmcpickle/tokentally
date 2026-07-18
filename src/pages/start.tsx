@@ -192,6 +192,26 @@ export const Start: FC<{ base: string }> = ({ base }) => (
                     </button>
                 </div>
 
+                <h2>3. Backfill past history (optional)</h2>
+                <p class={muted}>
+                    The hooks only report new sessions. To load everything you
+                    ran before installing TokenTally, run this once — it scans
+                    all your local Claude Code and Codex transcripts and uploads
+                    them (idempotent, so it's safe to re-run):
+                </p>
+                <div class={copyrow}>
+                    <pre id="r-backfill">
+                        node ~/.tokentally/tokentally.mjs backfill
+                    </pre>
+                    <button
+                        class={`copy ${btnCopy}`}
+                        data-target="r-backfill"
+                        type="button"
+                    >
+                        Copy
+                    </button>
+                </div>
+
                 <p class={`${sub} mt-6`}>
                     That's it.{' '}
                     <a

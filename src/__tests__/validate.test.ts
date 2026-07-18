@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { parseIngestBody, validateUsername } from '@/lib/validate';
+import {
+    MAX_HISTORY_SESSIONS,
+    MAX_INGEST_SESSIONS,
+    parseHistoryBody,
+    parseIngestBody,
+    validateUsername,
+} from '@/lib/validate';
 
 describe('validateUsername', () => {
     it('accepts valid handles', () => {
@@ -88,6 +94,62 @@ describe('parseIngestBody', () => {
                 source: 'codex',
                 sessions: [{ session_id: 's' }],
             }).ok,
+        ).toBe(false);
+    });
+
+    it('caps ingest at MAX_INGEST_SESSIONS', () => {
+        const many = Array.from(
+            { length: MAX_INGEST_SESSIONS + 1 },
+            (_, i) => ({
+                session_id: `s${i}`,
+                model: 'm',
+            }),
+        );
+        expect(parseIngestBody({ source: 'codex', sessions: many }).ok).toBe(
+            false,
+        );
+    });
+});
+
+describe('parseHistoryBody', () => {
+    function many(n: number) {
+        return Array.from({ length: n }, (_, i) => ({
+            session_id: `s${i}`,
+            model: 'm',
+        }));
+    }
+
+    it('accepts more sessions than the ingest cap', () => {
+        const r = parseHistoryBody({
+            source: 'claude_code',
+            sessions: many(MAX_INGEST_SESSIONS + 1),
+        });
+        expect(r.ok).toBe(true);
+    });
+
+    it('accepts exactly the history cap', () => {
+        const r = parseHistoryBody({
+            source: 'claude_code',
+            sessions: many(MAX_HISTORY_SESSIONS),
+        });
+        expect(r.ok).toBe(true);
+    });
+
+    it('rejects beyond the history cap', () => {
+        const r = parseHistoryBody({
+            source: 'claude_code',
+            sessions: many(MAX_HISTORY_SESSIONS + 1),
+        });
+        expect(r.ok).toBe(false);
+    });
+
+    it('applies the same per-session validation', () => {
+        expect(parseHistoryBody({ source: 'nope', sessions: many(1) }).ok).toBe(
+            false,
+        );
+        expect(
+            parseHistoryBody({ source: 'codex', sessions: [{ model: 'm' }] })
+                .ok,
         ).toBe(false);
     });
 });

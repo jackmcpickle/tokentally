@@ -42,14 +42,15 @@ reporter/tokentally.mjs   # the copy-paste reporter (served at /tokentally.mjs)
 
 ## API
 
-| Method | Path                | Auth   | Purpose                                  |
-| ------ | ------------------- | ------ | ---------------------------------------- |
-| POST   | `/api/register`     | —      | `{username}` → `{id, username, token}`   |
-| POST   | `/api/token/rotate` | Bearer | rotate your token                        |
-| POST   | `/api/ingest`       | Bearer | upsert `{source, sessions[]}`            |
-| GET    | `/api/leaderboard`  | —      | `?window=&metric=&source=&model=&limit=` |
-| GET    | `/api/u/:username`  | —      | profile totals + breakdown               |
-| GET    | `/api/health`       | —      | `{name, version}`                        |
+| Method | Path                | Auth   | Purpose                                             |
+| ------ | ------------------- | ------ | --------------------------------------------------- |
+| POST   | `/api/register`     | —      | `{username}` → `{id, username, token}`              |
+| POST   | `/api/token/rotate` | Bearer | rotate your token                                   |
+| POST   | `/api/ingest`       | Bearer | upsert `{source, sessions[]}` (live reporting)      |
+| POST   | `/api/history`      | Bearer | bulk backfill `{source, sessions[]}` (past history) |
+| GET    | `/api/leaderboard`  | —      | `?window=&metric=&source=&model=&limit=`            |
+| GET    | `/api/u/:username`  | —      | profile totals + breakdown                          |
+| GET    | `/api/health`       | —      | `{name, version}`                                   |
 
 `window` ∈ `today|7d|30d|all`, `metric` ∈ `total|io|output|cost`, `source` ∈ `claude_code|codex`.
 
@@ -114,6 +115,25 @@ command = "node ~/.tokentally/tokentally.mjs codex-sessionstart"
 ```
 
 The token lives only in `~/.tokentally/config.json`, never in shared settings files.
+
+## Backfilling past history
+
+The hooks only report sessions going forward (`SessionStart` catch-up scans the last
+`TOKENTALLY_DAYS`, default 3). To load everything you ran _before_ installing TokenTally,
+run the one-time backfill — it scans **all** local Claude Code / Codex transcripts and
+uploads them:
+
+```sh
+node ~/.tokentally/tokentally.mjs backfill          # both tools
+node ~/.tokentally/tokentally.mjs backfill claude   # Claude Code only
+node ~/.tokentally/tokentally.mjs backfill codex    # Codex only
+```
+
+Backfill posts to a dedicated **`POST /api/history`** endpoint (Bearer auth) rather than
+`/api/ingest`. It's a separate route with its own rate-limit bucket and a larger
+per-request cap, so a big one-time upload doesn't eat into the live reporting budget.
+Uploads are the same idempotent upsert as `/api/ingest` — keyed by session id — so it's
+safe to run backfill while the hooks are active and safe to re-run.
 
 ## Pricing
 

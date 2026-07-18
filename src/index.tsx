@@ -7,6 +7,7 @@ import { Layout } from '@/pages/layout';
 import { ProfilePage } from '@/pages/profile';
 import { Start } from '@/pages/start';
 import { sub } from '@/pages/ui';
+import { historyRoutes } from '@/routes/history';
 import { ingestRoutes } from '@/routes/ingest';
 import {
     parseMetric,
@@ -55,6 +56,7 @@ app.use(
 app.get('/api/health', (c) => c.json({ name: 'tokentally', version: VERSION }));
 app.route('/api', registerRoutes);
 app.route('/api', ingestRoutes);
+app.route('/api', historyRoutes);
 app.route('/api', leaderboardRoutes);
 
 // Reporter script served for the copy-paste onboarding snippet.

@@ -21,9 +21,13 @@ const RESERVED = new Set([
 // Guardrails: reject physically implausible reports.
 // 2e9 tokens in a single session category
 const MAX_TOKENS_PER_CATEGORY = 2_000_000_000;
-const MAX_SESSIONS_PER_REQUEST = 500;
 const MAX_MODEL_LEN = 128;
 const MAX_SESSION_ID_LEN = 200;
+
+// Per-request session caps. Live reporting sends small, frequent batches; a
+// one-time history backfill sends far more rows at once, so it gets its own cap.
+export const MAX_INGEST_SESSIONS = 500;
+export const MAX_HISTORY_SESSIONS = 5000;
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 
@@ -104,7 +108,11 @@ function parseSessionEntry(raw: unknown): Result<SessionUsageInput> {
     return { ok: true, value: row };
 }
 
-export function parseIngestBody(body: unknown): Result<IngestPayload> {
+export function parseIngestBody(
+    body: unknown,
+    opts: { maxSessions?: number } = {},
+): Result<IngestPayload> {
+    const maxSessions = opts.maxSessions ?? MAX_INGEST_SESSIONS;
     if (typeof body !== 'object' || body === null) {
         return { ok: false, error: 'body must be a JSON object' };
     }
@@ -119,10 +127,10 @@ export function parseIngestBody(body: unknown): Result<IngestPayload> {
     if (b.sessions.length === 0) {
         return { ok: false, error: 'sessions must not be empty' };
     }
-    if (b.sessions.length > MAX_SESSIONS_PER_REQUEST) {
+    if (b.sessions.length > maxSessions) {
         return {
             ok: false,
-            error: `too many sessions (max ${MAX_SESSIONS_PER_REQUEST})`,
+            error: `too many sessions (max ${maxSessions})`,
         };
     }
 
@@ -134,4 +142,9 @@ export function parseIngestBody(body: unknown): Result<IngestPayload> {
     }
 
     return { ok: true, value: { source: b.source, sessions } };
+}
+
+/** Same shape as ingest, but with the larger bulk-backfill session cap. */
+export function parseHistoryBody(body: unknown): Result<IngestPayload> {
+    return parseIngestBody(body, { maxSessions: MAX_HISTORY_SESSIONS });
 }
