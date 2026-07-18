@@ -177,6 +177,31 @@ export default defineConfig({
             },
         },
         {
+            files: ['src/pages/layout.tsx'],
+            rules: {
+                // Tailwind-built stylesheet inlined via wrangler Text rule; the
+                // `@/` alias is unresolved by wrangler's esbuild so a relative
+                // import is required, and the CSS is inlined intentionally.
+                'import/no-relative-parent-imports': 'off',
+                'react/no-danger': 'off',
+            },
+        },
+        {
+            // Exploratory chart prototypes; relax rules that only matter for
+            // shipped, reusable components.
+            files: ['src/pages/prototype/**'],
+            rules: {
+                'import/no-relative-parent-imports': 'off',
+                'react/no-multi-comp': 'off',
+                'react/no-danger': 'off',
+                'react/style-prop-object': 'off',
+                'jsx-a11y/prefer-tag-over-role': 'off',
+                'typescript/no-non-null-assertion': 'off',
+                'no-plusplus': 'off',
+                'no-inline-comments': 'off',
+            },
+        },
+        {
             files: ['src/__tests__/reporter.test.ts'],
             rules: {
                 'import/no-relative-parent-imports': 'off',
