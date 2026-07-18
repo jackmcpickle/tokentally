@@ -184,6 +184,14 @@ export default defineConfig({
                 // import is required, and the CSS is inlined intentionally.
                 'import/no-relative-parent-imports': 'off',
                 'react/no-danger': 'off',
+                // Mark + Wordmark live next to Layout as private chrome helpers.
+                'react/no-multi-comp': 'off',
+            },
+        },
+        {
+            files: ['scripts/**'],
+            rules: {
+                'no-console': 'off',
             },
         },
         {

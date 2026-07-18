@@ -102,7 +102,10 @@ export const Start: FC<{ base: string }> = ({ base }) => (
                 class={panel}
             >
                 <form id="reg">
-                    <label class={field}>
+                    <label
+                        class={field}
+                        htmlFor="username"
+                    >
                         <span class={fieldLbl}>
                             Username (2–32 chars: letters, numbers, _ or -)
                         </span>

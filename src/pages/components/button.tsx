@@ -42,10 +42,41 @@ export const Button: FC<ButtonProps> = (props) => {
         );
     }
 
+    // Literal `type` values — oxlint react/button-has-type rejects expressions.
+    if (props.type === 'submit') {
+        return (
+            <button
+                class={className}
+                type="submit"
+                disabled={props.disabled}
+                aria-label={props['aria-label']}
+                data-target={props['data-target']}
+                data-proto-nav={props['data-proto-nav']}
+            >
+                {props.children}
+            </button>
+        );
+    }
+
+    if (props.type === 'reset') {
+        return (
+            <button
+                class={className}
+                type="reset"
+                disabled={props.disabled}
+                aria-label={props['aria-label']}
+                data-target={props['data-target']}
+                data-proto-nav={props['data-proto-nav']}
+            >
+                {props.children}
+            </button>
+        );
+    }
+
     return (
         <button
             class={className}
-            type={props.type ?? 'button'}
+            type="button"
             disabled={props.disabled}
             aria-label={props['aria-label']}
             data-target={props['data-target']}

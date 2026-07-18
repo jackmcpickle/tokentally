@@ -4,10 +4,7 @@ import { formatTokens, formatUsd } from '@/lib/format';
 import { Button } from '@/pages/components/button';
 import { Input } from '@/pages/components/input';
 import { Layout } from '@/pages/layout';
-import {
-    type ChartMetric,
-    type ChartPeriod,
-} from '@/pages/prototype/chart-mock';
+import type { ChartMetric, ChartPeriod } from '@/pages/prototype/chart-mock';
 import { ChartPrototype } from '@/pages/prototype/chart-variants';
 import { PrototypeSwitcher } from '@/pages/prototype/switcher';
 import {
@@ -95,10 +92,14 @@ export const Home: FC<HomeProps> = (p) => (
             method="get"
             action="/"
         >
-            <label class={filterLabel}>
+            <label
+                class={filterLabel}
+                htmlFor="filter-window"
+            >
                 Window
                 <Input
                     variant="select"
+                    id="filter-window"
                     name="window"
                 >
                     {(['today', '7d', '30d', 'all'] as TimeWindow[]).map(
@@ -114,10 +115,14 @@ export const Home: FC<HomeProps> = (p) => (
                     )}
                 </Input>
             </label>
-            <label class={filterLabel}>
+            <label
+                class={filterLabel}
+                htmlFor="filter-metric"
+            >
                 Rank by
                 <Input
                     variant="select"
+                    id="filter-metric"
                     name="metric"
                 >
                     {(['total', 'io', 'output', 'cost'] as Metric[]).map(
@@ -133,10 +138,14 @@ export const Home: FC<HomeProps> = (p) => (
                     )}
                 </Input>
             </label>
-            <label class={filterLabel}>
+            <label
+                class={filterLabel}
+                htmlFor="filter-source"
+            >
                 Source
                 <Input
                     variant="select"
+                    id="filter-source"
                     name="source"
                 >
                     <option
@@ -159,10 +168,14 @@ export const Home: FC<HomeProps> = (p) => (
                     </option>
                 </Input>
             </label>
-            <label class={filterLabel}>
+            <label
+                class={filterLabel}
+                htmlFor="filter-model"
+            >
                 Model
                 <Input
                     variant="select"
+                    id="filter-model"
                     name="model"
                 >
                     <option

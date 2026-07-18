@@ -5,49 +5,55 @@ import { Button } from '@/pages/components/button';
 // eslint-disable-next-line import/default
 import CSS from '../styles/app.css';
 
-const Mark: FC<{ class?: string }> = ({ class: className }) => (
-    <svg
-        class={className ?? 'h-7 w-7'}
-        viewBox="0 0 100 100"
-        fill="none"
-        aria-hidden="true"
-    >
-        <g fill="currentColor">
-            <rect
-                x="22"
-                y="68"
-                width="36"
-                height="12"
-                rx="6"
-                opacity="0.4"
-            />
-            <rect
-                x="32"
-                y="48"
-                width="36"
-                height="12"
-                rx="6"
-                opacity="0.7"
-            />
-            <rect
-                x="42"
-                y="28"
-                width="36"
-                height="12"
-                rx="6"
-            />
-        </g>
-    </svg>
-);
+function Mark(props: { class?: string }): ReturnType<FC<{ class?: string }>> {
+    return (
+        <svg
+            class={props.class ?? 'h-7 w-7'}
+            viewBox="0 0 100 100"
+            fill="none"
+            aria-hidden="true"
+        >
+            <g fill="currentColor">
+                <rect
+                    x="22"
+                    y="68"
+                    width="36"
+                    height="12"
+                    rx="6"
+                    opacity="0.4"
+                />
+                <rect
+                    x="32"
+                    y="48"
+                    width="36"
+                    height="12"
+                    rx="6"
+                    opacity="0.7"
+                />
+                <rect
+                    x="42"
+                    y="28"
+                    width="36"
+                    height="12"
+                    rx="6"
+                />
+            </g>
+        </svg>
+    );
+}
 
-const Wordmark: FC<{ class?: string }> = ({ class: className }) => (
-    <span
-        class={`wm font-display font-medium tracking-[-0.05em] ${className ?? ''}`}
-    >
-        token<span class="max">maxer</span>
-        <span class="tld">.quest</span>
-    </span>
-);
+function Wordmark(props: {
+    class?: string;
+}): ReturnType<FC<{ class?: string }>> {
+    return (
+        <span
+            class={`wm font-display font-medium tracking-[-0.05em] ${props.class ?? ''}`}
+        >
+            token<span class="max">maxer</span>
+            <span class="tld">.quest</span>
+        </span>
+    );
+}
 
 const SITE_DESCRIPTION =
     'tokenmaxer.quest — a public leaderboard of tokens burned by AI builders on Claude Code and Codex.';
