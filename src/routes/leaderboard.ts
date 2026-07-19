@@ -1,8 +1,5 @@
 import { Hono } from 'hono';
-import {
-    cachedLeaderboard,
-    cachedProfile,
-} from '@/lib/cached-aggregate';
+import { cachedLeaderboard, cachedProfile } from '@/lib/cached-aggregate';
 import { apiCache } from '@/lib/page-cache';
 import {
     type Env,
