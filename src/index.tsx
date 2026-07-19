@@ -38,6 +38,7 @@ import {
     parseWindow,
 } from '@/routes/leaderboard';
 import { leaderboardRoutes } from '@/routes/leaderboard';
+import { ogRoutes } from '@/routes/og';
 import { profileRoutes } from '@/routes/profile';
 import { registerRoutes } from '@/routes/register';
 import type { Env } from '@/types';
@@ -99,6 +100,9 @@ app.get('/tokentally.mjs', (c) =>
 
 // Browsers still request /favicon.ico by default; SVG lives in public/.
 app.get('/favicon.ico', (c) => c.redirect('/favicon.svg', 302));
+
+// Dynamic profile OG images — before HTML `/u/:username`.
+app.route('/', ogRoutes);
 
 // ---- HTML pages ----
 app.get('/', pageCache, async (c) => {

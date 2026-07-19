@@ -16,11 +16,14 @@ type ButtonProps = {
     children?: Child;
     class?: string;
     href?: string;
+    download?: string;
     type?: 'button' | 'submit' | 'reset';
     disabled?: boolean;
+    hidden?: boolean;
     'aria-label'?: string;
     'data-target'?: string;
     'data-proto-nav'?: string;
+    'data-share'?: string;
 };
 
 function cx(...parts: Array<string | undefined>): string {
@@ -29,18 +32,25 @@ function cx(...parts: Array<string | undefined>): string {
 
 export const Button: FC<ButtonProps> = (props) => {
     const className = cx(VARIANT_CLASS[props.variant], props.class);
+    const ariaLabel = props['aria-label'];
+    const dataShare = props['data-share'];
 
     if (props.href !== undefined) {
         return (
             <a
                 class={className}
                 href={props.href}
-                aria-label={props['aria-label']}
+                download={props.download}
+                aria-label={ariaLabel}
+                data-share={dataShare}
             >
                 {props.children}
             </a>
         );
     }
+
+    const dataTarget = props['data-target'];
+    const dataProtoNav = props['data-proto-nav'];
 
     // Literal `type` values — oxlint react/button-has-type rejects expressions.
     if (props.type === 'submit') {
@@ -49,9 +59,11 @@ export const Button: FC<ButtonProps> = (props) => {
                 class={className}
                 type="submit"
                 disabled={props.disabled}
-                aria-label={props['aria-label']}
-                data-target={props['data-target']}
-                data-proto-nav={props['data-proto-nav']}
+                hidden={props.hidden}
+                aria-label={ariaLabel}
+                data-target={dataTarget}
+                data-proto-nav={dataProtoNav}
+                data-share={dataShare}
             >
                 {props.children}
             </button>
@@ -64,9 +76,11 @@ export const Button: FC<ButtonProps> = (props) => {
                 class={className}
                 type="reset"
                 disabled={props.disabled}
-                aria-label={props['aria-label']}
-                data-target={props['data-target']}
-                data-proto-nav={props['data-proto-nav']}
+                hidden={props.hidden}
+                aria-label={ariaLabel}
+                data-target={dataTarget}
+                data-proto-nav={dataProtoNav}
+                data-share={dataShare}
             >
                 {props.children}
             </button>
@@ -78,9 +92,11 @@ export const Button: FC<ButtonProps> = (props) => {
             class={className}
             type="button"
             disabled={props.disabled}
-            aria-label={props['aria-label']}
-            data-target={props['data-target']}
-            data-proto-nav={props['data-proto-nav']}
+            hidden={props.hidden}
+            aria-label={ariaLabel}
+            data-target={dataTarget}
+            data-proto-nav={dataProtoNav}
+            data-share={dataShare}
         >
             {props.children}
         </button>

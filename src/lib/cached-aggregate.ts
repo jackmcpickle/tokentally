@@ -2,11 +2,14 @@ import {
     getDistinctModelFamilies,
     getLeaderboard,
     getProfile,
+    getProfileWindowTotals,
     type LeaderboardEntry,
     type LeaderboardQuery,
     type Profile,
+    type ProfileWindowTotals,
 } from '@/lib/aggregate';
 import { getOrSet, READ_CACHE_TTL_SECONDS } from '@/lib/read-cache';
+import type { TimeWindow } from '@/types';
 
 export function leaderboardCacheKey(query: LeaderboardQuery): string {
     return [
@@ -23,12 +26,22 @@ export function profileCacheKey(username: string): string {
     return `agg:profile:v1:${username.toLowerCase()}`;
 }
 
-/** Drop a user's profile aggregate after ingest/history so the next read is fresh. */
+export function profileWindowCacheKey(
+    username: string,
+    window: TimeWindow,
+): string {
+    return `agg:profile${window}:v1:${username.toLowerCase()}`;
+}
+
+/** Drop a user's profile aggregates after ingest/history so the next read is fresh. */
 export async function invalidateProfileCache(
     kv: KVNamespace,
     username: string,
 ): Promise<void> {
-    await kv.delete(profileCacheKey(username));
+    await Promise.all([
+        kv.delete(profileCacheKey(username)),
+        kv.delete(profileWindowCacheKey(username, '7d')),
+    ]);
 }
 
 const MODELS_CACHE_KEY = 'agg:models:v1';
@@ -59,6 +72,18 @@ export async function cachedProfile(
 ): Promise<Profile | null> {
     return withReadCache(kv, profileCacheKey(username), () =>
         getProfile(db, username),
+    );
+}
+
+export async function cachedProfileWindow(
+    db: D1Database,
+    kv: KVNamespace,
+    username: string,
+    window: TimeWindow,
+    now: number,
+): Promise<ProfileWindowTotals | null> {
+    return withReadCache(kv, profileWindowCacheKey(username, window), () =>
+        getProfileWindowTotals(db, username, window, now),
     );
 }
 

@@ -24,6 +24,7 @@
         "db:migrate": "wrangler d1 migrations apply tokentally --remote"
     },
     "dependencies": {
+        "@cf-wasm/resvg": "0.3.5",
         "hono": "^4.6.16"
     },
     "devDependencies": {
