@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { aboutMarkdown } from '@/content/about.md';
-import { llmsFullTxt } from '@/content/llms-full';
+import { homeMarkdown } from '@/content/home.md';
 import { llmsTxt } from '@/content/llms';
+import { llmsFullTxt } from '@/content/llms-full';
+import { profileMarkdown, profileNotFoundMarkdown } from '@/content/profile.md';
 import { startMarkdown } from '@/content/start.md';
+import type { LeaderboardEntry, Profile } from '@/lib/aggregate';
+import { formatTokens, formatUsd } from '@/lib/format';
 
 describe('aboutMarkdown', () => {
     it('has title and core sections', () => {
@@ -44,9 +48,7 @@ describe('llmsTxt', () => {
         expect(md).toContain(
             '[Leaderboard](https://tokenmaxer.quest/index.md)',
         );
-        expect(md).toContain(
-            '[About](https://tokenmaxer.quest/about.md)',
-        );
+        expect(md).toContain('[About](https://tokenmaxer.quest/about.md)');
         expect(md).toContain(
             '[Get started](https://tokenmaxer.quest/start.md)',
         );
@@ -63,5 +65,140 @@ describe('llmsFullTxt', () => {
         expect(md).toContain('# Get started');
         expect(md).toContain('/index.md');
         expect(md.length).toBeLessThan(50_000);
+    });
+});
+
+const fixtureEntry: LeaderboardEntry = {
+    rank: 1,
+    username: 'alice',
+    sessions: 12,
+    input_tokens: 120_000,
+    output_tokens: 45_000,
+    cache_read_tokens: 30_000,
+    cache_creation_tokens: 5_000,
+    reasoning_tokens: 8_000,
+    cost: 12.34,
+    grand_total: 208_000,
+};
+
+describe('homeMarkdown', () => {
+    it('mentions top 10 / 7 days by default and lists table columns', () => {
+        const md = homeMarkdown({
+            base: 'https://tokenmaxer.quest',
+            entries: [fixtureEntry],
+            window: '7d',
+        });
+        expect(md).toMatch(/top 10/i);
+        expect(md).toMatch(/7 days/i);
+        expect(md).toContain('| Rank |');
+        for (const col of [
+            'Rank',
+            'Username',
+            'Sessions',
+            'Input',
+            'Output',
+            'Cache read',
+            'Cache write',
+            'Reasoning',
+            'Total',
+            'Est. cost',
+        ]) {
+            expect(md).toContain(col);
+        }
+        expect(md).toContain('alice');
+        expect(md).toContain(formatTokens(fixtureEntry.input_tokens));
+        expect(md).toContain(formatUsd(fixtureEntry.cost));
+        expect(md).toContain('https://tokenmaxer.quest/api/leaderboard');
+    });
+
+    it('mentions the active window when 30d is passed', () => {
+        const md = homeMarkdown({
+            base: 'https://tokenmaxer.quest',
+            entries: [fixtureEntry],
+            window: '30d',
+        });
+        expect(md).toMatch(/30d|30 days/i);
+    });
+
+    it('shows a "no entries yet" note with an empty leaderboard', () => {
+        const md = homeMarkdown({
+            base: 'https://tokenmaxer.quest',
+            entries: [],
+            window: '7d',
+        });
+        expect(md).toContain('| Rank |');
+        expect(md).toMatch(/no entries yet/i);
+    });
+
+    it('lists active source and model filters when provided', () => {
+        const md = homeMarkdown({
+            base: 'https://tokenmaxer.quest',
+            entries: [fixtureEntry],
+            window: 'today',
+            source: 'claude_code',
+            model: 'sonnet',
+        });
+        expect(md).toContain('Claude Code');
+        expect(md).toContain('sonnet');
+    });
+});
+
+const fixtureProfile: Profile = {
+    username: 'bob',
+    created_at: Date.UTC(2026, 0, 1),
+    rank: 3,
+    sessions: 20,
+    grand_total: 500_000,
+    input_tokens: 300_000,
+    output_tokens: 150_000,
+    cache_read_tokens: 40_000,
+    cache_creation_tokens: 8_000,
+    reasoning_tokens: 2_000,
+    cost: 45.6,
+    breakdown: [
+        {
+            source: 'claude_code',
+            model: 'claude-sonnet-4-6',
+            input_tokens: 300_000,
+            output_tokens: 150_000,
+            cache_read_tokens: 40_000,
+            cache_creation_tokens: 8_000,
+            reasoning_tokens: 2_000,
+            cost: 45.6,
+        },
+    ],
+};
+
+describe('profileMarkdown', () => {
+    it('includes username, rank, totals, and a breakdown model row', () => {
+        const md = profileMarkdown({
+            base: 'https://tokenmaxer.quest',
+            profile: fixtureProfile,
+        });
+        expect(md).toMatch(/^# bob/m);
+        expect(md).toContain('Rank #3');
+        expect(md).toContain(formatTokens(fixtureProfile.grand_total));
+        expect(md).toContain(formatUsd(fixtureProfile.cost));
+        expect(md).toContain('## By model');
+        expect(md).toContain('Claude Code');
+        expect(md).toContain('claude-sonnet-4-6');
+        expect(md).toContain('https://tokenmaxer.quest/llms.txt');
+        expect(md).toContain('https://tokenmaxer.quest/api/u/bob');
+    });
+
+    it('shows a "no usage" note for an empty breakdown', () => {
+        const md = profileMarkdown({
+            base: 'https://tokenmaxer.quest',
+            profile: { ...fixtureProfile, breakdown: [] },
+        });
+        expect(md).toMatch(/no usage/i);
+    });
+});
+
+describe('profileNotFoundMarkdown', () => {
+    it('mentions not found and the requested username', () => {
+        const md = profileNotFoundMarkdown('nope');
+        expect(md).toMatch(/not found/i);
+        expect(md).toContain('nope');
     });
 });
