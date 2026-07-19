@@ -136,6 +136,18 @@ const TABS: Array<{ id: string; label: string }> = [
     { id: 'cursor', label: 'Cursor' },
 ];
 
+const SETUP_TIP = (
+    <>
+        <p class="mb-3 text-[13px] font-medium tracking-[-0.13px] text-white/80">
+            Setup tip
+        </p>
+        <p class="text-[22px] leading-snug tracking-[-0.01px]">
+            After you claim, paste the agent prompt into your coding agent — it
+            can set everything up for you.
+        </p>
+    </>
+);
+
 export const Start: FC<{
     base: string;
     invited: boolean;
@@ -145,6 +157,16 @@ export const Start: FC<{
         title="Get started · tokenmaxer.quest"
         base={base}
     >
+        {!invited && (
+            <div class="mt-6 rounded-lg bg-panel2 px-4 py-3.5 text-sm text-text">
+                Username claims are invite-only.{' '}
+                <a href="mailto:jackmcpickle@gmail.com?subject=tokenmaxer.quest%20invite">
+                    Email me
+                </a>{' '}
+                for an invite link.
+            </div>
+        )}
+
         <section class={hero}>
             <h1 class="reveal">Claim your name</h1>
             <p class={`${sub} reveal reveal-delay`}>
@@ -154,8 +176,8 @@ export const Start: FC<{
             </p>
         </section>
 
-        <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-            {invited ? (
+        {invited && (
+            <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
                 <div
                     id="claim-panel"
                     class={panel}
@@ -196,25 +218,10 @@ export const Start: FC<{
                         />
                     </form>
                 </div>
-            ) : (
-                <div class={panel}>
-                    <div class={notice}>
-                        Username claims are invite-only. Ask the person who
-                        shared tokenmaxer.quest for the invite link.
-                    </div>
-                </div>
-            )}
 
-            <aside class="spotlight spotlight-orange">
-                <p class="mb-3 text-[13px] font-medium tracking-[-0.13px] text-white/80">
-                    Setup tip
-                </p>
-                <p class="text-[22px] leading-snug tracking-[-0.01px]">
-                    After you claim, paste the agent prompt into your coding
-                    agent — it can set everything up for you.
-                </p>
-            </aside>
-        </div>
+                <aside class="spotlight spotlight-orange">{SETUP_TIP}</aside>
+            </div>
+        )}
 
         <div
             id="result"
@@ -263,196 +270,211 @@ export const Start: FC<{
             </div>
         </div>
 
-        <div class={panel}>
-            <h2 class="mt-0">One-time setup</h2>
-            <p class={muted}>
-                Downloads the reporter and writes your config (the token lives
-                here, never in shared settings). Run in a terminal:
-            </p>
-            <div class={copyrow}>
-                <pre id="r-setup" />
-                <Button
-                    variant="copy"
-                    data-target="r-setup"
-                    type="button"
+        <div
+            class={
+                invited
+                    ? ''
+                    : 'grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_300px]'
+            }
+        >
+            <div class={`${panel} min-w-0`}>
+                <h2 class="mt-0">One-time setup</h2>
+                <p class={muted}>
+                    Downloads the reporter and writes your config (the token
+                    lives here, never in shared settings). Run in a terminal:
+                </p>
+                <div class={copyrow}>
+                    <pre id="r-setup" />
+                    <Button
+                        variant="copy"
+                        data-target="r-setup"
+                        type="button"
+                    >
+                        Copy
+                    </Button>
+                </div>
+
+                <div class="mt-6 mb-4 flex flex-wrap border-b border-border">
+                    {TABS.map((t) => (
+                        <button
+                            key={t.id}
+                            class={`tab${t.id === 'agent' ? ' tab-active' : ''}`}
+                            type="button"
+                            data-tab={t.id}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
+                </div>
+
+                <div
+                    id="tab-agent"
+                    class="tab-panel"
                 >
-                    Copy
-                </Button>
-            </div>
-
-            <div class="mt-6 mb-4 flex flex-wrap border-b border-border">
-                {TABS.map((t) => (
-                    <button
-                        key={t.id}
-                        class={`tab${t.id === 'agent' ? ' tab-active' : ''}`}
-                        type="button"
-                        data-tab={t.id}
-                    >
-                        {t.label}
-                    </button>
-                ))}
-            </div>
-
-            <div
-                id="tab-agent"
-                class="tab-panel"
-            >
-                <p class={muted}>
-                    Paste this into your coding agent — it will read the start
-                    page and do the setup for you.
-                </p>
-                <div class={copyrow}>
-                    <pre id="r-agent" />
-                    <Button
-                        variant="copy"
-                        data-target="r-agent"
-                        type="button"
-                    >
-                        Copy
-                    </Button>
+                    <p class={muted}>
+                        Paste this into your coding agent — it will read the
+                        start page and do the setup for you.
+                    </p>
+                    <div class={copyrow}>
+                        <pre id="r-agent" />
+                        <Button
+                            variant="copy"
+                            data-target="r-agent"
+                            type="button"
+                        >
+                            Copy
+                        </Button>
+                    </div>
                 </div>
-            </div>
 
-            <div
-                id="tab-claude"
-                class="tab-panel hidden"
-            >
-                <h2>Claude Code hooks</h2>
-                <p class={muted}>
-                    Merge into <code>~/.claude/settings.json</code>:
-                </p>
-                <div class={copyrow}>
-                    <pre id="r-claude" />
-                    <Button
-                        variant="copy"
-                        data-target="r-claude"
-                        type="button"
-                    >
-                        Copy
-                    </Button>
-                </div>
-            </div>
-
-            <div
-                id="tab-codex"
-                class="tab-panel hidden"
-            >
-                <h2>Codex hooks</h2>
-                <p class={muted}>
-                    Add to <code>~/.codex/config.toml</code>. Codex has no
-                    SessionEnd hook, so your latest session reports when you
-                    next launch Codex.
-                </p>
-                <div class={copyrow}>
-                    <pre id="r-codex" />
-                    <Button
-                        variant="copy"
-                        data-target="r-codex"
-                        type="button"
-                    >
-                        Copy
-                    </Button>
-                </div>
-            </div>
-
-            <div
-                id="tab-opencode"
-                class="tab-panel hidden"
-            >
-                <h2>opencode hook</h2>
-                <p class={muted}>
-                    opencode has no shell hooks, so add a wrapper function to
-                    your <code>~/.bashrc</code> or <code>~/.zshrc</code>. It
-                    reports your latest sessions each time opencode exits:
-                </p>
-                <div class={copyrow}>
-                    <pre id="r-opencode" />
-                    <Button
-                        variant="copy"
-                        data-target="r-opencode"
-                        type="button"
-                    >
-                        Copy
-                    </Button>
-                </div>
-            </div>
-
-            <div
-                id="tab-pi"
-                class="tab-panel hidden"
-            >
-                <h2>pi hook</h2>
-                <p class={muted}>
-                    Same idea for pi — add a wrapper function to your{' '}
-                    <code>~/.bashrc</code> or <code>~/.zshrc</code>:
-                </p>
-                <div class={copyrow}>
-                    <pre id="r-pi" />
-                    <Button
-                        variant="copy"
-                        data-target="r-pi"
-                        type="button"
-                    >
-                        Copy
-                    </Button>
-                </div>
-            </div>
-
-            <div
-                id="tab-cursor"
-                class="tab-panel hidden"
-            >
-                <h2>Cursor</h2>
-                <p class={muted}>
-                    Cursor doesn&apos;t expose token usage to hooks, so the
-                    reporter pulls your usage from Cursor&apos;s dashboard API.
-                    It auto-reads your Cursor login from local storage — no
-                    extra auth in the common case. Add this to{' '}
-                    <code>~/.cursor/hooks.json</code> so every session triggers
-                    a sync:
-                </p>
-                <div class={copyrow}>
-                    <pre id="r-cursor" />
-                    <Button
-                        variant="copy"
-                        data-target="r-cursor"
-                        type="button"
-                    >
-                        Copy
-                    </Button>
-                </div>
-                <p class={`${muted} mt-3 text-[13px]`}>
-                    If auto-auth fails (Cursor not logged in on this machine),
-                    copy the <code>WorkosCursorSessionToken</code> cookie from
-                    cursor.com (DevTools → Application → Cookies) into{' '}
-                    <code>~/.tokentally/config.json</code> as{' '}
-                    <code>&quot;cursorCookie&quot;</code>. This uses an
-                    unofficial Cursor endpoint, so the cookie may occasionally
-                    need refreshing.
-                </p>
-            </div>
-
-            <h2>Backfill past history (optional)</h2>
-            <p class={muted}>
-                The hooks only report new sessions. To load everything you ran
-                before installing tokenmaxer.quest, run this once — it scans all
-                your local Claude Code, Codex, opencode, pi and Cursor history
-                and uploads it (idempotent, so it&apos;s safe to re-run). Add{' '}
-                <code>claude</code>, <code>codex</code>, <code>opencode</code>,{' '}
-                <code>pi</code> or <code>cursor</code> to limit it to one tool:
-            </p>
-            <div class={copyrow}>
-                <pre id="r-backfill">
-                    node ~/.tokentally/tokentally.mjs backfill
-                </pre>
-                <Button
-                    variant="copy"
-                    data-target="r-backfill"
-                    type="button"
+                <div
+                    id="tab-claude"
+                    class="tab-panel hidden"
                 >
-                    Copy
-                </Button>
+                    <h2>Claude Code hooks</h2>
+                    <p class={muted}>
+                        Merge into <code>~/.claude/settings.json</code>:
+                    </p>
+                    <div class={copyrow}>
+                        <pre id="r-claude" />
+                        <Button
+                            variant="copy"
+                            data-target="r-claude"
+                            type="button"
+                        >
+                            Copy
+                        </Button>
+                    </div>
+                </div>
+
+                <div
+                    id="tab-codex"
+                    class="tab-panel hidden"
+                >
+                    <h2>Codex hooks</h2>
+                    <p class={muted}>
+                        Add to <code>~/.codex/config.toml</code>. Codex has no
+                        SessionEnd hook, so your latest session reports when you
+                        next launch Codex.
+                    </p>
+                    <div class={copyrow}>
+                        <pre id="r-codex" />
+                        <Button
+                            variant="copy"
+                            data-target="r-codex"
+                            type="button"
+                        >
+                            Copy
+                        </Button>
+                    </div>
+                </div>
+
+                <div
+                    id="tab-opencode"
+                    class="tab-panel hidden"
+                >
+                    <h2>opencode hook</h2>
+                    <p class={muted}>
+                        opencode has no shell hooks, so add a wrapper function
+                        to your <code>~/.bashrc</code> or <code>~/.zshrc</code>.
+                        It reports your latest sessions each time opencode
+                        exits:
+                    </p>
+                    <div class={copyrow}>
+                        <pre id="r-opencode" />
+                        <Button
+                            variant="copy"
+                            data-target="r-opencode"
+                            type="button"
+                        >
+                            Copy
+                        </Button>
+                    </div>
+                </div>
+
+                <div
+                    id="tab-pi"
+                    class="tab-panel hidden"
+                >
+                    <h2>pi hook</h2>
+                    <p class={muted}>
+                        Same idea for pi — add a wrapper function to your{' '}
+                        <code>~/.bashrc</code> or <code>~/.zshrc</code>:
+                    </p>
+                    <div class={copyrow}>
+                        <pre id="r-pi" />
+                        <Button
+                            variant="copy"
+                            data-target="r-pi"
+                            type="button"
+                        >
+                            Copy
+                        </Button>
+                    </div>
+                </div>
+
+                <div
+                    id="tab-cursor"
+                    class="tab-panel hidden"
+                >
+                    <h2>Cursor</h2>
+                    <p class={muted}>
+                        Cursor doesn&apos;t expose token usage to hooks, so the
+                        reporter pulls your usage from Cursor&apos;s dashboard
+                        API. It auto-reads your Cursor login from local storage
+                        — no extra auth in the common case. Add this to{' '}
+                        <code>~/.cursor/hooks.json</code> so every session
+                        triggers a sync:
+                    </p>
+                    <div class={copyrow}>
+                        <pre id="r-cursor" />
+                        <Button
+                            variant="copy"
+                            data-target="r-cursor"
+                            type="button"
+                        >
+                            Copy
+                        </Button>
+                    </div>
+                    <p class={`${muted} mt-3 text-[13px]`}>
+                        If auto-auth fails (Cursor not logged in on this
+                        machine), copy the <code>WorkosCursorSessionToken</code>{' '}
+                        cookie from cursor.com (DevTools → Application →
+                        Cookies) into <code>~/.tokentally/config.json</code> as{' '}
+                        <code>&quot;cursorCookie&quot;</code>. This uses an
+                        unofficial Cursor endpoint, so the cookie may
+                        occasionally need refreshing.
+                    </p>
+                </div>
+
+                <h2>Backfill past history (optional)</h2>
+                <p class={muted}>
+                    The hooks only report new sessions. To load everything you
+                    ran before installing tokenmaxer.quest, run this once — it
+                    scans all your local Claude Code, Codex, opencode, pi and
+                    Cursor history and uploads it (idempotent, so it&apos;s safe
+                    to re-run). Add <code>claude</code>, <code>codex</code>,{' '}
+                    <code>opencode</code>, <code>pi</code> or{' '}
+                    <code>cursor</code> to limit it to one tool:
+                </p>
+                <div class={copyrow}>
+                    <pre id="r-backfill">
+                        node ~/.tokentally/tokentally.mjs backfill
+                    </pre>
+                    <Button
+                        variant="copy"
+                        data-target="r-backfill"
+                        type="button"
+                    >
+                        Copy
+                    </Button>
+                </div>
             </div>
+            {!invited && (
+                <aside class="spotlight spotlight-orange h-fit">
+                    {SETUP_TIP}
+                </aside>
+            )}
         </div>
 
         <script
