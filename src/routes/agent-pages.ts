@@ -1,3 +1,4 @@
+import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { aboutMarkdown } from '@/content/about.md';
 import { homeMarkdown } from '@/content/home.md';
@@ -18,26 +19,29 @@ import type { Env } from '@/types';
 
 export const agentPageRoutes = new Hono<{ Bindings: Env }>();
 
-agentPageRoutes.get('/llms.txt', (c) =>
-    plainBody(llmsTxt(baseUrl(c.env, c.req.url))),
-);
+/** Shared with `GET /about` in `src/index.tsx` when the request isn't from a browser. */
+export async function serveAboutMarkdown(
+    _c: Context<{ Bindings: Env }>,
+): Promise<Response> {
+    return markdownBody(aboutMarkdown());
+}
 
-agentPageRoutes.get('/llms-full.txt', (c) =>
-    plainBody(llmsFullTxt(baseUrl(c.env, c.req.url))),
-);
-
-agentPageRoutes.get('/about.md', () => markdownBody(aboutMarkdown()));
-
-agentPageRoutes.get('/start.md', async (c) => {
+/** Shared with `GET /start` in `src/index.tsx` when the request isn't from a browser. */
+export async function serveStartMarkdown(
+    c: Context<{ Bindings: Env }>,
+): Promise<Response> {
     const invited = await inviteSessionAllowed(
         c.env.INVITE_KEY,
         getInviteCookie(c),
     );
     if (!invited) return markdownBody(INVITE_REQUIRED_MD, { status: 403 });
     return markdownBody(startMarkdown(baseUrl(c.env, c.req.url)));
-});
+}
 
-agentPageRoutes.get('/index.md', async (c) => {
+/** Shared with `GET /` in `src/index.tsx` when the request isn't from a browser. */
+export async function serveHomeMarkdown(
+    c: Context<{ Bindings: Env }>,
+): Promise<Response> {
     const window = parseWindow(c.req.query('window'));
     const source = parseSourceParam(c.req.query('source'));
     const modelRaw = c.req.query('model');
@@ -56,10 +60,18 @@ agentPageRoutes.get('/index.md', async (c) => {
             model,
         }),
     );
-});
+}
 
-agentPageRoutes.get('/u/:username{.+\\.md}', async (c) => {
-    const raw = c.req.param('username');
+/**
+ * Shared with `GET /u/:username` in `src/index.tsx` when the request isn't from
+ * a browser. Reads the `username` param and, if present, strips a trailing
+ * `.md` suffix so the same handler serves both `/u/:username` and the
+ * `/u/:username.md` route registered below.
+ */
+export async function serveProfileMarkdown(
+    c: Context<{ Bindings: Env }>,
+): Promise<Response> {
+    const raw = c.req.param('username') ?? '';
     const username = raw.endsWith('.md') ? raw.slice(0, -3) : raw;
     const profile = await getProfile(c.env.DB, username);
     if (!profile) {
@@ -73,4 +85,20 @@ agentPageRoutes.get('/u/:username{.+\\.md}', async (c) => {
             profile,
         }),
     );
-});
+}
+
+agentPageRoutes.get('/llms.txt', (c) =>
+    plainBody(llmsTxt(baseUrl(c.env, c.req.url))),
+);
+
+agentPageRoutes.get('/llms-full.txt', (c) =>
+    plainBody(llmsFullTxt(baseUrl(c.env, c.req.url))),
+);
+
+agentPageRoutes.get('/about.md', (c) => serveAboutMarkdown(c));
+
+agentPageRoutes.get('/start.md', (c) => serveStartMarkdown(c));
+
+agentPageRoutes.get('/index.md', (c) => serveHomeMarkdown(c));
+
+agentPageRoutes.get('/u/:username{.+\\.md}', (c) => serveProfileMarkdown(c));

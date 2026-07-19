@@ -1,5 +1,7 @@
+import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { isBrowserRequest } from '@/lib/agent-markdown';
 import {
     getDistinctModelFamilies,
     getLeaderboard,
@@ -18,6 +20,13 @@ import { Layout } from '@/pages/layout';
 import { ProfilePage } from '@/pages/profile';
 import { Start } from '@/pages/start';
 import { sub } from '@/pages/ui';
+import {
+    agentPageRoutes,
+    serveAboutMarkdown,
+    serveHomeMarkdown,
+    serveProfileMarkdown,
+    serveStartMarkdown,
+} from '@/routes/agent-pages';
 import { historyRoutes } from '@/routes/history';
 import { ingestRoutes } from '@/routes/ingest';
 import {
@@ -46,6 +55,16 @@ app.use('*', async (c, next) => {
     }
     return next();
 });
+
+// Markdown/plaintext pages for agents: /llms.txt, /llms-full.txt, /about.md,
+// /start.md, /index.md, /u/:username.md. Distinct literal paths, so this
+// never shadows /api/*.
+app.route('/', agentPageRoutes);
+
+function withAgentDiscoveryHeaders(c: Context<{ Bindings: Env }>): void {
+    c.header('Link', '</llms.txt>; rel="describedby"');
+    c.header('X-Llms-Txt', '/llms.txt');
+}
 
 // Public API — token goes in the Authorization header (no cookies), so reflecting
 // the request origin is safe and lets third parties consume the read endpoints.
@@ -77,6 +96,8 @@ app.get('/favicon.ico', (c) => c.redirect('/favicon.svg', 302));
 
 // ---- HTML pages ----
 app.get('/', async (c) => {
+    if (!isBrowserRequest(c.req.raw)) return serveHomeMarkdown(c);
+
     const window = parseWindow(c.req.query('window'));
     const metric = parseMetric(c.req.query('metric'));
     const source = parseSourceParam(c.req.query('source'));
@@ -92,6 +113,7 @@ app.get('/', async (c) => {
         ),
         getDistinctModelFamilies(c.env.DB),
     ]);
+    withAgentDiscoveryHeaders(c);
     return c.html(
         <Home
             base={base}
@@ -128,10 +150,12 @@ app.get('/start', async (c) => {
                 : '/invite';
         return c.redirect(dest, 302);
     }
+    if (!isBrowserRequest(c.req.raw)) return serveStartMarkdown(c);
     const invited = await inviteSessionAllowed(
         c.env.INVITE_KEY,
         getInviteCookie(c),
     );
+    withAgentDiscoveryHeaders(c);
     return c.html(
         <Start
             base={baseUrl(c.env, c.req.url)}
@@ -139,9 +163,15 @@ app.get('/start', async (c) => {
         />,
     );
 });
-app.get('/about', (c) => c.html(<About base={baseUrl(c.env, c.req.url)} />));
+app.get('/about', async (c) => {
+    if (!isBrowserRequest(c.req.raw)) return serveAboutMarkdown(c);
+    withAgentDiscoveryHeaders(c);
+    return c.html(<About base={baseUrl(c.env, c.req.url)} />);
+});
 
 app.get('/u/:username', async (c) => {
+    if (!isBrowserRequest(c.req.raw)) return serveProfileMarkdown(c);
+    withAgentDiscoveryHeaders(c);
     const base = baseUrl(c.env, c.req.url);
     const profile = await getProfile(c.env.DB, c.req.param('username'));
     if (!profile) {
