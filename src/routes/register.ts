@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { authenticate, generateToken, hashToken, newId } from '@/lib/auth';
-import { inviteAllowed } from '@/lib/invite';
+import { getInviteCookie, inviteSessionAllowed } from '@/lib/invite';
 import { rateLimit } from '@/lib/ratelimit';
 import { validateUsername } from '@/lib/validate';
 import type { Env } from '@/types';
@@ -51,15 +51,16 @@ app.post('/register', async (c) => {
         .json<{
             username?: unknown;
             turnstileToken?: unknown;
-            inviteKey?: unknown;
         }>()
         .catch(() => ({
             username: undefined,
             turnstileToken: undefined,
-            inviteKey: undefined,
         }));
 
-    const invited = await inviteAllowed(c.env.INVITE_KEY, body.inviteKey);
+    const invited = await inviteSessionAllowed(
+        c.env.INVITE_KEY,
+        getInviteCookie(c),
+    );
     if (!invited) return c.json({ error: 'invite required' }, 403);
 
     const human = await verifyTurnstile(

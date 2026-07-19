@@ -87,10 +87,12 @@ if (form) {
     const btn = form.querySelector('button');
     btn.disabled = true; btn.textContent = 'Claiming…';
     try {
-      const res = await fetch(BASE + '/api/register', {
+      // Same-origin so the invite session cookie is included (BASE may differ).
+      const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, turnstileToken, inviteKey: form.dataset.invite || undefined })
+        credentials: 'same-origin',
+        body: JSON.stringify({ username, turnstileToken })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -151,8 +153,7 @@ const SETUP_TIP = (
 export const Start: FC<{
     base: string;
     invited: boolean;
-    inviteKey: string;
-}> = ({ base, invited, inviteKey }) => (
+}> = ({ base, invited }) => (
     <Layout
         title="Get started · tokenmaxer.quest"
         base={base}
@@ -182,10 +183,7 @@ export const Start: FC<{
                     id="claim-panel"
                     class={panel}
                 >
-                    <form
-                        id="reg"
-                        data-invite={inviteKey}
-                    >
+                    <form id="reg">
                         <label
                             class={field}
                             htmlFor="username"

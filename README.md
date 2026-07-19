@@ -60,6 +60,16 @@ reporter/tokentally.mjs   # the copy-paste reporter (served at /tokentally.mjs)
 
 `window` ∈ `today|7d|30d|all`, `metric` ∈ `total|input|output|cached|cost`, `source` ∈ `claude_code|codex|opencode|pi|cursor`.
 
+## Agent-readable pages
+
+Non-browser clients (e.g. `curl`) get Markdown by default on `/`, `/about`,
+`/start`, and `/u/:username`. Browsers still get HTML. Explicit twins:
+
+- `/llms.txt`, `/llms-full.txt`
+- `/index.md`, `/about.md`, `/start.md`, `/u/:username.md`
+
+`/start.md` requires the invite session cookie when `INVITE_KEY` is set.
+
 ## Development
 
 ```sh
@@ -82,7 +92,7 @@ pnpm deploy
 
 ## Onboarding (what users paste)
 
-Username claims are invite-only via a shared invite link at `/start?invite=<KEY>`.
+Username claims are invite-only via a shared invite link at `/invite?invite=<KEY>` (sets a session cookie, then redirects home; claim the username at `/start`).
 
 After claiming a username at `/start`, users get a personalized version of:
 
