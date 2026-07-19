@@ -48,6 +48,18 @@ declare module '*/tokentally.mjs' {
         clear: false;
         url: string;
     }): { url: string };
+    export function buildProfileUrlDryRun(args: {
+        endpoint: string;
+        body: { url: string | null };
+    }): {
+        method: 'POST';
+        url: string;
+        headers: {
+            'Content-Type': 'application/json';
+            Authorization: 'Bearer <redacted>';
+        };
+        body: { url: string | null };
+    };
     export function sessionIdFromPath(path: string): string;
     export function toRows(
         parsed: ParsedTranscript,

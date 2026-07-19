@@ -769,13 +769,25 @@ export function buildProfileUrlBody(parsed) {
     return { url: parsed.clear ? null : parsed.url };
 }
 
+export function buildProfileUrlDryRun({ endpoint, body }) {
+    return {
+        method: 'POST',
+        url: endpoint,
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer <redacted>',
+        },
+        body,
+    };
+}
+
 async function setProfileUrl(cfg, argv) {
     const parsed = parseSetProfileUrlArgs(argv);
     const body = buildProfileUrlBody(parsed);
     const endpoint = `${cfg.apiBase}/api/profile`;
     if (DRY_RUN) {
         process.stdout.write(
-            `${JSON.stringify({ method: 'POST', url: endpoint, body }, null, 2)}\n`,
+            `${JSON.stringify(buildProfileUrlDryRun({ endpoint, body }), null, 2)}\n`,
         );
         return;
     }
@@ -1082,7 +1094,7 @@ async function main() {
         }
         default:
             process.stderr.write(
-                'usage: tokentally.mjs <claude-sessionend|claude-sessionstart|codex-sessionstart|opencode-sessionstart|pi-sessionstart|claude-report <path>|codex-report <path>|opencode-report <sessionID>|pi-report <path>|cursor-sync|backfill [claude|codex|opencode|pi|cursor]|set-profile-url <https-url>|--clear> [--dry-run]\n',
+                'usage: tokentally.mjs <claude-sessionend|claude-sessionstart|codex-sessionstart|opencode-sessionstart|pi-sessionstart|claude-report <path>|codex-report <path>|opencode-report <sessionID>|pi-report <path>|cursor-sync|backfill [claude|codex|opencode|pi|cursor]|set-profile-url (<https-url>|--clear)> [--dry-run]\n',
             );
     }
 }

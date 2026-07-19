@@ -8,6 +8,7 @@ import {
     parsePiRollout,
     parseSetProfileUrlArgs,
     buildProfileUrlBody,
+    buildProfileUrlDryRun,
     sessionIdFromPath,
     toRows,
 } from '../../reporter/tokentally.mjs';
@@ -362,5 +363,32 @@ describe('set-profile-url helpers', () => {
             }),
         ).toEqual({ url: 'https://example.com/me' });
         expect(buildProfileUrlBody({ clear: true })).toEqual({ url: null });
+    });
+
+    it('builds redacted dry-run payloads for set and clear', () => {
+        const endpoint = 'https://tokenmaxer.quest/api/profile';
+        const headers = {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer <redacted>',
+        };
+        expect(
+            buildProfileUrlDryRun({
+                endpoint,
+                body: { url: 'https://example.com/me' },
+            }),
+        ).toEqual({
+            method: 'POST',
+            url: endpoint,
+            headers,
+            body: { url: 'https://example.com/me' },
+        });
+        expect(
+            buildProfileUrlDryRun({ endpoint, body: { url: null } }),
+        ).toEqual({
+            method: 'POST',
+            url: endpoint,
+            headers,
+            body: { url: null },
+        });
     });
 });
