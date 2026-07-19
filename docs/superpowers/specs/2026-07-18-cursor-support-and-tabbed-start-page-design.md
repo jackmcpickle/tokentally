@@ -4,12 +4,17 @@ Date: 2026-07-18
 
 ## Goal
 
-Two related changes to onboarding:
+Three related changes to onboarding:
 
 1. Restructure the post-claim setup on `/start` into **tabs**, and add a first
    tab holding a **copyable agent prompt** (embeds the user's token) that tells an
    AI coding agent to open the start page and do the setup.
 2. Add **Cursor** as a supported source — end to end (reporter + server + UI).
+3. **Invite-gate username creation.** Setup instructions stay public, but
+   claiming a username requires an invite key passed as a URL param
+   (`/start?invite=<KEY>`) — one shared, unguessable link the owner can drop in a
+   WhatsApp group. The key is a server secret, never rendered into the public
+   page or leaderboard.
 
 ## Background / constraints (researched)
 
@@ -83,16 +88,51 @@ trigger to pull. Also runnable manually and via `backfill cursor`.
 - `src/pages/home.tsx` — add a `cursor` filter option.
 - Model-family unchanged (Cursor uses claude/gpt model ids, already handled).
 
+### Invite gate
+
+Goal: setup docs stay public; **claiming a username** requires a shared secret
+passed via URL param. One link, many people — but unguessable and never exposed
+in the public page.
+
+- **Secret:** `INVITE_KEY` in `Env` (Cloudflare secret via `wrangler secret` /
+  `.dev.vars`). Not committed. A long random string.
+- **Start route** (where `Start` is rendered): read `c.req.query('invite')`,
+  constant-time compare to `c.env.INVITE_KEY`, pass an `invited: boolean` prop to
+  the component. When `INVITE_KEY` is unset (local/dev), treat as **not gated**
+  (invited = true) so dev isn't blocked — documented in the route.
+- **`Start` component** renders the setup tabs **always**; renders the claim form
+  + "For your agent" prompt **only when `invited`**. When not invited, show a
+  brief notice ("Username claims are invite-only — ask for an invite link") in
+  place of the form. The invite key is passed through only via the form's hidden
+  handoff to the register call — never printed into the leaderboard or any public
+  route.
+- **`/api/register`** gains invite validation: read `inviteKey` from the request
+  body, constant-time compare to `c.env.INVITE_KEY`; missing/wrong → `403`.
+  Keeps existing Turnstile + rate-limit checks (invite check first, cheapest).
+  When `INVITE_KEY` is unset, skip the check (matches dev behavior above).
+- **Client script:** read `invite` from `location.search`, include it in the
+  `/api/register` body alongside `username` + `turnstileToken`.
+
+Note: an invite key in a URL is shareable-but-leakable by nature (that's the
+requirement — one link for a WhatsApp group). It is *not* per-user and grants no
+account access on its own; it only unlocks the claim form + register endpoint.
+Rotating it (change the secret) invalidates old links.
+
 ### Start page (`src/pages/start.tsx`)
 
+- **Setup instructions are always available** (public), shown with placeholder
+  token/username (e.g. `<YOUR_TOKEN>`) until a claim fills them in. This means
+  the tabbed setup section renders regardless of invite state; only the claim
+  form + real token/agent-prompt are gated.
 - Keep the shared **one-time setup** (curl + write config) above the tabs.
-- Convert the post-claim setup into **lightweight inline tabs** — buttons that
-  toggle panels via the existing client `<script>` (no dependency, matches
-  current copy-button pattern). Tabs:
+- Convert the setup into **lightweight inline tabs** — buttons that toggle panels
+  via the existing client `<script>` (no dependency, matches current copy-button
+  pattern). Tabs:
   1. **For your agent** (default) — copyable prompt embedding username + token +
      base URL, e.g. *"Go to `<BASE>/start` and help me set up tokentally.
      Username: X, token: Y. Run the one-time setup and configure hooks for
-     whichever editors I use (Claude Code / Codex / Cursor)."*
+     whichever editors I use (Claude Code / Codex / Cursor)."* Placeholder token
+     until claimed.
   2. **Claude Code** — existing hooks JSON.
   3. **Codex** — existing TOML.
   4. **Cursor** — `~/.cursor/hooks.json` snippet running `cursor-sync`; note that
@@ -100,6 +140,8 @@ trigger to pull. Also runnable manually and via `backfill cursor`.
      (paste `WorkosCursorSessionToken` into config if auto-auth fails); honest
      note that this uses Cursor's unofficial dashboard endpoint so it may need
      the fallback cookie occasionally.
+- On claim, the existing JS swaps placeholders for the real token/username across
+  all tabs (extends the current `r-*` element updates).
 - Backfill note gains a `cursor` mention.
 
 ## Testing
@@ -108,6 +150,10 @@ trigger to pull. Also runnable manually and via `backfill cursor`.
   token field mapping. Add to `src/__tests__/reporter.test.ts` (imports from the
   reporter, like the codex tests).
 - Unit: `validate` accepts `cursor`; `isSource('cursor')` true.
+- Register route: rejects missing/wrong `inviteKey` with 403; accepts correct
+  key; skips check when `INVITE_KEY` unset.
+- Manual: `/start` without `?invite=` shows docs but no claim form; with correct
+  key shows the form; wrong key stays gated.
 - Manual: run `cursor-sync` against a real Cursor install; confirm rows appear on
   the profile and re-running doesn't double-count.
 
@@ -131,3 +177,5 @@ trigger to pull. Also runnable manually and via `backfill cursor`.
 2. `cursor-sync` trigger: `sessionStart` only, or also `stop`? (default:
    `sessionStart` only)
 3. Cursor backfill window cap? (default: 90 days)
+4. Single static `INVITE_KEY`, or support rotating/multiple keys later?
+   (default: single static secret; rotate by changing it)
