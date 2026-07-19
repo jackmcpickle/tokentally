@@ -92,7 +92,7 @@ pnpm deploy
 
 ## Onboarding (what users paste)
 
-Username claims are invite-only via a shared invite link at `/invite?invite=<KEY>` (sets a session cookie, then redirects home; claim the username at `/start`).
+Username claims are invite-only via a shared invite link at `/invite?token=<KEY>` (sets a session cookie, then redirects home; claim the username at `/start`).
 
 After claiming a username at `/start`, users get a personalized version of:
 

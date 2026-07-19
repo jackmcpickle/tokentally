@@ -128,10 +128,11 @@ app.get('/', async (c) => {
     );
 });
 
-// Shared invite link: `/invite?invite=<KEY>` sets a session cookie, then home.
-// Legacy `/start?invite=` redirects here.
+// Shared invite link: `/invite?token=<KEY>` sets a session cookie, then home.
+// Legacy `/invite?invite=` and `/start?invite=` still work.
 app.get('/invite', async (c) => {
-    const provided = c.req.query('invite') ?? '';
+    // Prefer non-empty `token`; empty `?token=` falls through to legacy `invite`.
+    const provided = c.req.query('token') || c.req.query('invite') || '';
     // Cookie only when the gate is on and the key matched (empty provided fails).
     if (c.env.INVITE_KEY && (await inviteAllowed(c.env.INVITE_KEY, provided))) {
         await setInviteCookie(c, c.env.INVITE_KEY);
@@ -140,13 +141,15 @@ app.get('/invite', async (c) => {
 });
 
 app.get('/start', async (c) => {
-    const invite = c.req.query('invite');
-    if (invite !== undefined) {
-        const dest =
-            invite.length > 0
-                ? `/invite?invite=${encodeURIComponent(invite)}`
-                : '/invite';
-        return c.redirect(dest, 302);
+    // Legacy claim URLs: bounce through /invite so the session cookie is set.
+    const key = c.req.query('token') ?? c.req.query('invite');
+    if (key !== undefined) {
+        return c.redirect(
+            key.length > 0
+                ? `/invite?token=${encodeURIComponent(key)}`
+                : '/invite',
+            302,
+        );
     }
     if (!isBrowserRequest(c.req.raw)) return serveStartMarkdown(c);
     const invited = await inviteSessionAllowed(

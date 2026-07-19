@@ -1,6 +1,6 @@
 export const INVITE_REQUIRED_MD = `# Invite required
 
-Open \`/invite?invite=…\` in a browser first, then retry.
+Open \`/invite?token=…\` in a browser first, then retry.
 `;
 
 export function isBrowserRequest(req: Request): boolean {

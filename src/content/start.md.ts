@@ -94,7 +94,7 @@ Pick a username, get a token, and configure hooks so your coding tools report to
 
 ## Claim a username
 
-Username claims are invite-only. Open \`/invite?invite=…\` in a browser first so the invite session cookie is set, then claim via \`POST /api/register\`:
+Username claims are invite-only. Open \`/invite?token=…\` in a browser first so the invite session cookie is set, then claim via \`POST /api/register\`:
 
 \`\`\`json
 POST /api/register
