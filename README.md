@@ -1,7 +1,7 @@
 # TokenTally
 
 A public leaderboard of the tokens AI builders burn with **Claude Code**, **Codex**,
-**opencode** and **pi**. Pick a username, paste a couple of snippets, and your coding
+**opencode**, **pi** and **Cursor**. Pick a username, paste a couple of snippets, and your coding
 sessions self-report their token usage to the board. No email, no PII — just token
 counts.
 
@@ -21,6 +21,7 @@ files [`ccusage`](https://ccusage.com) parses.
   on each assistant message
 - **pi** — `~/.pi/agent/sessions/**/*.jsonl` → `usage` on each assistant record
   (deduped by `id`, since pi stores a branching tree)
+- **Cursor** — dashboard API fetch via local auth (reporter calls `cursor-sync`)
 
 Reporting fires on Claude Code / Codex **SessionStart** / **SessionEnd** hooks (no cron,
 no daemon). opencode and pi have no shell hooks, so a small **shell wrapper function**
@@ -57,7 +58,7 @@ reporter/tokentally.mjs   # the copy-paste reporter (served at /tokentally.mjs)
 | GET    | `/api/u/:username`  | —      | profile totals + breakdown                          |
 | GET    | `/api/health`       | —      | `{name, version}`                                   |
 
-`window` ∈ `today|7d|30d|all`, `metric` ∈ `total|io|output|cost`, `source` ∈ `claude_code|codex|opencode|pi`.
+`window` ∈ `today|7d|30d|all`, `metric` ∈ `total|io|output|cost`, `source` ∈ `claude_code|codex|opencode|pi|cursor`.
 
 ## Development
 
@@ -80,6 +81,8 @@ pnpm deploy
 ```
 
 ## Onboarding (what users paste)
+
+Username claims are invite-only via a shared invite link at `/start?invite=<KEY>`.
 
 After claiming a username at `/start`, users get a personalized version of:
 
@@ -138,7 +141,7 @@ The token lives only in `~/.tokentally/config.json`, never in shared settings fi
 
 The hooks only report sessions going forward (`SessionStart` catch-up scans the last
 `TOKENTALLY_DAYS`, default 3). To load everything you ran _before_ installing TokenTally,
-run the one-time backfill — it scans **all** local Claude Code / Codex / opencode / pi
+run the one-time backfill — it scans **all** local Claude Code / Codex / opencode / pi / Cursor
 transcripts and uploads them:
 
 ```sh
@@ -147,6 +150,7 @@ node ~/.tokentally/tokentally.mjs backfill claude     # Claude Code only
 node ~/.tokentally/tokentally.mjs backfill codex      # Codex only
 node ~/.tokentally/tokentally.mjs backfill opencode   # opencode only
 node ~/.tokentally/tokentally.mjs backfill pi         # pi only
+node ~/.tokentally/tokentally.mjs backfill cursor     # Cursor only
 ```
 
 Backfill posts to a dedicated **`POST /api/history`** endpoint (Bearer auth) rather than
