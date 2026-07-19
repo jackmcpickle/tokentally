@@ -37,6 +37,18 @@ export const ProfilePage: FC<{ base: string; profile: Profile }> = ({
                 Rank #{p.rank} · joined {formatDate(p.created_at)} ·{' '}
                 {p.sessions} sessions tracked
             </p>
+            {p.url ? (
+                <p class="reveal reveal-delay mb-0 mt-3 text-[16px]">
+                    <a
+                        class="text-accent"
+                        href={p.url}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                    >
+                        {p.url}
+                    </a>
+                </p>
+            ) : null}
         </section>
 
         <div class={`${statGrid} mb-10`}>

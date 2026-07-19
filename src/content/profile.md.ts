@@ -43,6 +43,7 @@ export function profileMarkdown(opts: {
     profile: Profile;
 }): string {
     const { base, profile: p } = opts;
+    const linkLine = p.url ? `\n\nProfile: [${p.url}](${p.url})` : '';
 
     const summary = [
         SUMMARY_HEADER,
@@ -82,7 +83,7 @@ export function profileMarkdown(opts: {
 
     return `# ${p.username}
 
-Rank #${p.rank} · joined ${formatDate(p.created_at)} · ${p.sessions} sessions tracked
+Rank #${p.rank} · joined ${formatDate(p.created_at)} · ${p.sessions} sessions tracked${linkLine}
 
 ${summary}
 

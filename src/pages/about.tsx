@@ -93,8 +93,11 @@ export const About: FC<{ base: string }> = ({ base }) => (
                 only credential; we store just a SHA-256 hash of it, never the
                 token itself. There&apos;s no email and no recovery — if you
                 lose the token, that username is stranded (you can rotate the
-                token while you still hold it). We keep no personally
-                identifying information.
+                token while you still hold it). You may optionally publish an
+                external profile URL (<code>https:</code> only) via{' '}
+                <code>POST /api/profile</code>; it appears on your public
+                profile. Clearing it removes the link. Everything else remains
+                non-PII by default.
             </p>
 
             <div class={heroActions}>

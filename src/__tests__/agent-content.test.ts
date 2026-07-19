@@ -19,6 +19,7 @@ describe('aboutMarkdown', () => {
         expect(md).toContain('## Accounts & privacy');
         expect(md).toContain('Claude Code');
         expect(md).toContain('Cursor');
+        expect(md).toContain('/api/profile');
     });
 });
 
@@ -68,6 +69,7 @@ describe('llmsTxt', () => {
         );
         expect(md).toContain('https://tokenmaxer.quest/api/leaderboard');
         expect(md).toContain('https://tokenmaxer.quest/api/u/:username');
+        expect(md).toContain('https://tokenmaxer.quest/api/profile');
         expect(md).toContain('## Optional');
     });
 });
@@ -208,6 +210,16 @@ describe('profileMarkdown', () => {
             profile: { ...fixtureProfile, breakdown: [] },
         });
         expect(md).toMatch(/no usage/iu);
+    });
+
+    it('includes a markdown link when profile.url is set', () => {
+        const md = profileMarkdown({
+            base: 'https://tokenmaxer.quest',
+            profile: { ...fixtureProfile, url: 'https://example.com/bob' },
+        });
+        expect(md).toContain(
+            '[https://example.com/bob](https://example.com/bob)',
+        );
     });
 });
 

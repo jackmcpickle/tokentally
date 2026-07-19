@@ -19,6 +19,7 @@ Prefer the Markdown links below. Live rankings also available as JSON.
 - [Leaderboard JSON](${b}/api/leaderboard): \`?window=&metric=&source=&model=&limit=\`
 - [Profile JSON](${b}/api/u/:username): Totals + breakdown
 - [Register](${b}/api/register): \`POST {username}\` (invite session when gated)
+- [Update profile URL](${b}/api/profile): \`POST {url}\` (Bearer) — set or clear https link
 - [Ingest](${b}/api/ingest): Bearer — live session upserts
 - [History](${b}/api/history): Bearer — bulk backfill
 - [Health](${b}/api/health): Service ping

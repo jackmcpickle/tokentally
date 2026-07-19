@@ -25,6 +25,6 @@ Token counts are self-reported. There's no way to cryptographically prove number
 
 ## Accounts & privacy
 
-You pick a username and get a secret token. The token is the only credential; we store just a SHA-256 hash of it, never the token itself. There's no email and no recovery — if you lose the token, that username is stranded (you can rotate the token while you still hold it). We keep no personally identifying information.
+You pick a username and get a secret token. The token is the only credential; we store just a SHA-256 hash of it, never the token itself. There's no email and no recovery — if you lose the token, that username is stranded (you can rotate the token while you still hold it). You may optionally publish an external profile URL (\`https:\` only) via \`POST /api/profile\`; it appears on your public profile. Clearing it removes the link. Everything else remains non-PII by default.
 `;
 }
