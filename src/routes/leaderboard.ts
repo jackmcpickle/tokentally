@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
-import { getLeaderboard, getProfile } from '@/lib/aggregate';
+import { cachedLeaderboard, cachedProfile } from '@/lib/cached-aggregate';
+import { apiCache } from '@/lib/page-cache';
 import {
     type Env,
     isMetric,
@@ -23,7 +24,7 @@ export function parseSourceParam(v: string | undefined): Source | undefined {
 }
 
 // GET /api/leaderboard?window=&metric=&source=&model=&limit=
-app.get('/leaderboard', async (c) => {
+app.get('/leaderboard', apiCache, async (c) => {
     const window = parseWindow(c.req.query('window'));
     const metric = parseMetric(c.req.query('metric'));
     const source = parseSourceParam(c.req.query('source'));
@@ -34,8 +35,9 @@ app.get('/leaderboard', async (c) => {
         ? Math.min(Math.max(limitRaw, 1), 500)
         : 100;
 
-    const entries = await getLeaderboard(
+    const entries = await cachedLeaderboard(
         c.env.DB,
+        c.env.RATE_LIMIT,
         { window, metric, source, model, limit },
         Date.now(),
     );
@@ -49,8 +51,12 @@ app.get('/leaderboard', async (c) => {
 });
 
 // GET /api/u/:username
-app.get('/u/:username', async (c) => {
-    const profile = await getProfile(c.env.DB, c.req.param('username'));
+app.get('/u/:username', apiCache, async (c) => {
+    const profile = await cachedProfile(
+        c.env.DB,
+        c.env.RATE_LIMIT,
+        c.req.param('username'),
+    );
     if (!profile) return c.json({ error: 'not found' }, 404);
     return c.json(profile);
 });

@@ -2,18 +2,19 @@ import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { isBrowserRequest } from '@/lib/agent-markdown';
-import {
-    getDistinctModelFamilies,
-    getLeaderboard,
-    getProfile,
-} from '@/lib/aggregate';
 import { baseUrl } from '@/lib/base-url';
+import {
+    cachedDistinctModelFamilies,
+    cachedLeaderboard,
+    cachedProfile,
+} from '@/lib/cached-aggregate';
 import {
     getInviteCookie,
     inviteAllowed,
     inviteSessionAllowed,
     setInviteCookie,
 } from '@/lib/invite';
+import { pageCache } from '@/lib/page-cache';
 import { About } from '@/pages/about';
 import { Home } from '@/pages/home';
 import { Layout } from '@/pages/layout';
@@ -100,7 +101,7 @@ app.get('/tokentally.mjs', (c) =>
 app.get('/favicon.ico', (c) => c.redirect('/favicon.svg', 302));
 
 // ---- HTML pages ----
-app.get('/', async (c) => {
+app.get('/', pageCache, async (c) => {
     if (!isBrowserRequest(c.req.raw)) return serveHomeMarkdown(c);
 
     const window = parseWindow(c.req.query('window'));
@@ -111,12 +112,13 @@ app.get('/', async (c) => {
     const base = baseUrl(c.env, c.req.url);
 
     const [entries, models] = await Promise.all([
-        getLeaderboard(
+        cachedLeaderboard(
             c.env.DB,
+            c.env.RATE_LIMIT,
             { window, metric, source, model, limit: 100 },
             Date.now(),
         ),
-        getDistinctModelFamilies(c.env.DB),
+        cachedDistinctModelFamilies(c.env.DB, c.env.RATE_LIMIT),
     ]);
     withAgentDiscoveryHeaders(c);
     return c.html(
@@ -180,11 +182,15 @@ app.get('/pricing', async (c) => {
     return c.html(<Pricing base={baseUrl(c.env, c.req.url)} />);
 });
 
-app.get('/u/:username', async (c) => {
+app.get('/u/:username', pageCache, async (c) => {
     if (!isBrowserRequest(c.req.raw)) return serveProfileMarkdown(c);
     withAgentDiscoveryHeaders(c);
     const base = baseUrl(c.env, c.req.url);
-    const profile = await getProfile(c.env.DB, c.req.param('username'));
+    const profile = await cachedProfile(
+        c.env.DB,
+        c.env.RATE_LIMIT,
+        c.req.param('username'),
+    );
     if (!profile) {
         return c.html(
             <Layout

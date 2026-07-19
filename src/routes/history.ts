@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { authenticate } from '@/lib/auth';
+import { invalidateProfileCache } from '@/lib/cached-aggregate';
 import { rateLimit } from '@/lib/ratelimit';
 import { upsertSessions } from '@/lib/store';
 import { parseHistoryBody } from '@/lib/validate';
@@ -34,6 +35,7 @@ app.post('/history', async (c) => {
 
     const { source, sessions } = parsed.value;
     await upsertSessions(c.env.DB, user.id, source, sessions, Date.now());
+    await invalidateProfileCache(c.env.RATE_LIMIT, user.username);
 
     return c.json({ accepted: sessions.length });
 });

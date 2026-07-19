@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { stubKv } from '@/__tests__/helpers/kv';
 import app from '@/index';
 import { INVITE_COOKIE, inviteCookieToken } from '@/lib/invite';
 import type { Env } from '@/types';
@@ -21,7 +22,7 @@ function emptyDb(): D1Database {
 function env(over: Partial<Env> = {}): Env {
     return {
         DB: emptyDb(),
-        RATE_LIMIT: {} as KVNamespace,
+        RATE_LIMIT: stubKv(),
         ENVIRONMENT: 'test',
         PUBLIC_BASE_URL: 'https://tokenmaxer.quest',
         TURNSTYLE_SECRET_KEY: '',

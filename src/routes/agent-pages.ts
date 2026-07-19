@@ -12,9 +12,10 @@ import {
     markdownBody,
     plainBody,
 } from '@/lib/agent-markdown';
-import { getLeaderboard, getProfile } from '@/lib/aggregate';
 import { baseUrl } from '@/lib/base-url';
+import { cachedLeaderboard, cachedProfile } from '@/lib/cached-aggregate';
 import { getInviteCookie, inviteSessionAllowed } from '@/lib/invite';
+import { pageCache } from '@/lib/page-cache';
 import { parseSourceParam, parseWindow } from '@/routes/leaderboard';
 import type { Env } from '@/types';
 
@@ -54,8 +55,9 @@ export async function serveHomeMarkdown(
     const source = parseSourceParam(c.req.query('source'));
     const modelRaw = c.req.query('model');
     const model = modelRaw && modelRaw.length > 0 ? modelRaw : undefined;
-    const entries = await getLeaderboard(
+    const entries = await cachedLeaderboard(
         c.env.DB,
+        c.env.RATE_LIMIT,
         { window, metric: 'total', source, model, limit: 10 },
         Date.now(),
     );
@@ -81,7 +83,7 @@ export async function serveProfileMarkdown(
 ): Promise<Response> {
     const raw = c.req.param('username') ?? '';
     const username = raw.endsWith('.md') ? raw.slice(0, -3) : raw;
-    const profile = await getProfile(c.env.DB, username);
+    const profile = await cachedProfile(c.env.DB, c.env.RATE_LIMIT, username);
     if (!profile) {
         return markdownBody(profileNotFoundMarkdown(username), {
             status: 404,
@@ -109,6 +111,8 @@ agentPageRoutes.get('/pricing.md', (c) => servePricingMarkdown(c));
 
 agentPageRoutes.get('/start.md', (c) => serveStartMarkdown(c));
 
-agentPageRoutes.get('/index.md', (c) => serveHomeMarkdown(c));
+agentPageRoutes.get('/index.md', pageCache, (c) => serveHomeMarkdown(c));
 
-agentPageRoutes.get('/u/:username{.+\\.md}', (c) => serveProfileMarkdown(c));
+agentPageRoutes.get('/u/:username{.+\\.md}', pageCache, (c) =>
+    serveProfileMarkdown(c),
+);
