@@ -55,7 +55,7 @@ describe('parseIngestBody', () => {
         expect(parseIngestBody({ ...good, source: 'nope' }).ok).toBe(false);
     });
     it('accepts all supported sources', () => {
-        for (const source of ['claude_code', 'codex', 'opencode', 'pi']) {
+        for (const source of ['claude_code', 'codex', 'opencode', 'pi', 'cursor']) {
             const r = parseIngestBody({ ...good, source });
             expect(r.ok).toBe(true);
             if (r.ok) expect(r.value.source).toBe(source);
