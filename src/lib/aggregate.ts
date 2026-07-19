@@ -1,3 +1,4 @@
+import { distinctFamilies, familyOf } from '@/lib/model-family';
 import { estimateCost } from '@/lib/pricing';
 import type { Metric, Source, TimeWindow } from '@/types';
 
@@ -124,6 +125,7 @@ export interface LeaderboardQuery {
     window: TimeWindow;
     metric: Metric;
     source?: Source;
+    /** Model family id (e.g. `sonnet`), not a raw versioned model string. */
     model?: string;
     limit?: number;
 }
@@ -139,10 +141,8 @@ export async function getLeaderboard(
         conditions.push('su.source = ?');
         binds.push(q.source);
     }
-    if (q.model) {
-        conditions.push('su.model = ?');
-        binds.push(q.model);
-    }
+    // Model filter is applied in JS via familyOf so all versioned variants
+    // (e.g. claude-sonnet-4-6 and claude-sonnet-5) match one family id.
     const sql = `${GROUP_SELECT} WHERE ${conditions.join(' AND ')} GROUP BY su.user_id, su.source, su.model`;
     const res = await db
         .prepare(sql)
@@ -154,6 +154,7 @@ export async function getLeaderboard(
         { username: string; totals: Totals; sessions: number }
     >();
     for (const r of res.results) {
+        if (q.model && familyOf(r.model) !== q.model) continue;
         let entry = byUser.get(r.user_id);
         if (!entry) {
             entry = {
@@ -191,6 +192,13 @@ export async function getDistinctModels(db: D1Database): Promise<string[]> {
         .prepare('SELECT DISTINCT model FROM session_usage ORDER BY model')
         .all<{ model: string }>();
     return res.results.map((r) => r.model);
+}
+
+/** Bundled model family ids for the leaderboard filter (excludes synthetic). */
+export async function getDistinctModelFamilies(
+    db: D1Database,
+): Promise<string[]> {
+    return distinctFamilies(await getDistinctModels(db));
 }
 
 export async function getProfile(

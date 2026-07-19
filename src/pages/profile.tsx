@@ -67,65 +67,63 @@ export const ProfilePage: FC<{ base: string; profile: Profile }> = ({
             </div>
         </div>
 
-        <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-            <div>
-                <h2 class="mt-0">By model</h2>
-                <div class={panel}>
-                    {p.breakdown.length === 0 ? (
-                        <div class={empty}>No usage reported yet.</div>
-                    ) : (
-                        <div class="overflow-x-auto">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Source</th>
-                                        <th>Model</th>
-                                        <th class={num}>Total</th>
-                                        <th class={num}>Output</th>
-                                        <th class={num}>Est. cost</th>
+        <h2 class="mt-0">By model</h2>
+        <div class="grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_minmax(240px,280px)]">
+            <div class={`${panel} min-w-0`}>
+                {p.breakdown.length === 0 ? (
+                    <div class={empty}>No usage reported yet.</div>
+                ) : (
+                    <div class="overflow-x-auto">
+                        <table class="min-w-xl">
+                            <thead>
+                                <tr>
+                                    <th>Source</th>
+                                    <th>Model</th>
+                                    <th class={num}>Total</th>
+                                    <th class={num}>Output</th>
+                                    <th class={num}>Est. cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {p.breakdown.map((b) => (
+                                    <tr key={`${b.source}:${b.model}`}>
+                                        <td>
+                                            <span class={pill}>
+                                                {SOURCE_LABELS[b.source] ??
+                                                    b.source}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <code>{b.model}</code>
+                                        </td>
+                                        <td class={num}>
+                                            {formatTokens(
+                                                b.input_tokens +
+                                                    b.output_tokens +
+                                                    b.cache_read_tokens +
+                                                    b.cache_creation_tokens +
+                                                    b.reasoning_tokens,
+                                            )}
+                                        </td>
+                                        <td class={num}>
+                                            {formatTokens(b.output_tokens)}
+                                        </td>
+                                        <td class={num}>
+                                            {formatUsd(b.cost)}
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    {p.breakdown.map((b) => (
-                                        <tr key={`${b.source}:${b.model}`}>
-                                            <td>
-                                                <span class={pill}>
-                                                    {SOURCE_LABELS[b.source] ??
-                                                        b.source}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <code>{b.model}</code>
-                                            </td>
-                                            <td class={num}>
-                                                {formatTokens(
-                                                    b.input_tokens +
-                                                        b.output_tokens +
-                                                        b.cache_read_tokens +
-                                                        b.cache_creation_tokens +
-                                                        b.reasoning_tokens,
-                                                )}
-                                            </td>
-                                            <td class={num}>
-                                                {formatTokens(b.output_tokens)}
-                                            </td>
-                                            <td class={num}>
-                                                {formatUsd(b.cost)}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
 
-            <aside class="spotlight spotlight-violet h-fit">
+            <aside class="spotlight spotlight-violet w-full md:h-fit">
                 <p class="mb-3 text-[13px] font-medium tracking-[-0.13px] text-white/80">
                     Keep climbing
                 </p>
-                <p class="mb-6 text-[22px] leading-snug tracking-[-0.01px]">
+                <p class="mb-6 text-[20px] leading-snug tracking-[-0.01px] sm:text-[22px]">
                     Back to the board, or claim another machine with the same
                     hooks.
                 </p>

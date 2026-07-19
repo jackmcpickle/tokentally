@@ -22,6 +22,8 @@ type SelectInputProps = {
     name?: string;
     class?: string;
     required?: boolean;
+    /** Inline handler (SSR forms); e.g. auto-submit on change. */
+    onchange?: string;
     children?: Child;
 };
 
@@ -41,6 +43,7 @@ export const Input: FC<InputProps> = (props) => {
                 id={props.id}
                 name={props.name}
                 required={props.required}
+                onchange={props.onchange}
             >
                 {props.children}
             </select>
