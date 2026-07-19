@@ -6,6 +6,7 @@ import {
     parseIngestBody,
     validateUsername,
 } from '@/lib/validate';
+import { isSource } from '@/types';
 
 describe('validateUsername', () => {
     it('accepts valid handles', () => {
@@ -59,6 +60,10 @@ describe('parseIngestBody', () => {
             expect(r.ok).toBe(true);
             if (r.ok) expect(r.value.source).toBe(source);
         }
+    });
+    it('accepts cursor source', () => {
+        expect(parseIngestBody({ source: 'cursor', sessions: [] }).ok).toBe(false); // empty sessions still rejected
+        expect(isSource('cursor')).toBe(true);
     });
     it('rejects empty sessions', () => {
         expect(parseIngestBody({ source: 'codex', sessions: [] }).ok).toBe(

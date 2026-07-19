@@ -186,6 +186,12 @@ export const Home: FC<HomeProps> = (p) => (
                     >
                         pi
                     </option>
+                    <option
+                        value="cursor"
+                        selected={p.source === 'cursor'}
+                    >
+                        Cursor
+                    </option>
                 </Input>
             </label>
             <label

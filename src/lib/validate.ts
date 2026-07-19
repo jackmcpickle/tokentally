@@ -121,7 +121,7 @@ export function parseIngestBody(
     if (!isSource(b.source)) {
         return {
             ok: false,
-            error: "source must be 'claude_code', 'codex', 'opencode' or 'pi'",
+            error: "source must be 'claude_code', 'codex', 'opencode', 'pi' or 'cursor'",
         };
     }
     if (!Array.isArray(b.sessions)) {

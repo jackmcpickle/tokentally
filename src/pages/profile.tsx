@@ -20,6 +20,7 @@ const SOURCE_LABELS: Record<string, string> = {
     codex: 'Codex',
     opencode: 'opencode',
     pi: 'pi',
+    cursor: 'Cursor',
 };
 
 export const ProfilePage: FC<{ base: string; profile: Profile }> = ({
