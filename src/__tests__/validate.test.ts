@@ -26,6 +26,8 @@ describe('validateUsername', () => {
         expect(validateUsername('API').ok).toBe(false);
         expect(validateUsername('admin').ok).toBe(false);
         expect(validateUsername('pricing').ok).toBe(false);
+        expect(validateUsername('tokenmaxer').ok).toBe(false);
+        expect(validateUsername('TokenTally').ok).toBe(false);
     });
 });
 
