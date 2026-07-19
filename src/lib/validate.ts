@@ -33,6 +33,33 @@ export const MAX_HISTORY_SESSIONS = 5000;
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 
+const MAX_PROFILE_URL_LEN = 2048;
+
+export function validateProfileUrl(raw: unknown): Result<string | null> {
+    if (raw === null) return { ok: true, value: null };
+    if (typeof raw !== 'string') {
+        return { ok: false, error: 'url must be a string or null' };
+    }
+    const trimmed = raw.trim();
+    if (trimmed.length === 0) return { ok: true, value: null };
+    if (trimmed.length > MAX_PROFILE_URL_LEN) {
+        return { ok: false, error: 'url too long' };
+    }
+    let parsed: URL;
+    try {
+        parsed = new URL(trimmed);
+    } catch {
+        return { ok: false, error: 'url must be a valid https URL' };
+    }
+    if (parsed.protocol !== 'https:') {
+        return { ok: false, error: 'url must use https' };
+    }
+    if (parsed.username || parsed.password) {
+        return { ok: false, error: 'url must not include credentials' };
+    }
+    return { ok: true, value: parsed.href };
+}
+
 export function validateUsername(raw: unknown): Result<string> {
     if (typeof raw !== 'string')
         return { ok: false, error: 'username must be a string' };

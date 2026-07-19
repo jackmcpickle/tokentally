@@ -4,6 +4,7 @@ import {
     MAX_INGEST_SESSIONS,
     parseHistoryBody,
     parseIngestBody,
+    validateProfileUrl,
     validateUsername,
 } from '@/lib/validate';
 import { isSource } from '@/types';
@@ -213,5 +214,46 @@ describe('parseHistoryBody', () => {
             parseHistoryBody({ source: 'codex', sessions: [{ model: 'm' }] })
                 .ok,
         ).toBe(false);
+    });
+});
+
+describe('validateProfileUrl', () => {
+    it('accepts https URLs and returns href', () => {
+        expect(validateProfileUrl('https://example.com/me')).toEqual({
+            ok: true,
+            value: 'https://example.com/me',
+        });
+    });
+
+    it('trims whitespace', () => {
+        expect(validateProfileUrl('  https://example.com/x  ')).toEqual({
+            ok: true,
+            value: 'https://example.com/x',
+        });
+    });
+
+    it('clears on null or empty string', () => {
+        expect(validateProfileUrl(null)).toEqual({ ok: true, value: null });
+        expect(validateProfileUrl('')).toEqual({ ok: true, value: null });
+        expect(validateProfileUrl('   ')).toEqual({ ok: true, value: null });
+    });
+
+    it('rejects http, javascript, relative, and non-strings', () => {
+        expect(validateProfileUrl('http://example.com').ok).toBe(false);
+        expect(validateProfileUrl('javascript:alert(1)').ok).toBe(false);
+        expect(validateProfileUrl('/relative').ok).toBe(false);
+        expect(validateProfileUrl('example.com').ok).toBe(false);
+        expect(validateProfileUrl(42).ok).toBe(false);
+    });
+
+    it('rejects URLs with credentials', () => {
+        expect(validateProfileUrl('https://user:pass@example.com').ok).toBe(
+            false,
+        );
+    });
+
+    it('rejects overlong URLs', () => {
+        const long = `https://example.com/${'a'.repeat(2048)}`;
+        expect(validateProfileUrl(long).ok).toBe(false);
     });
 });
