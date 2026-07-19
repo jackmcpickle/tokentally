@@ -51,6 +51,7 @@ export interface Profile extends Totals {
     sessions: number;
     grand_total: number;
     breakdown: ModelBreakdown[];
+    url: string | null;
 }
 
 interface GroupedRow {
@@ -214,10 +215,15 @@ export async function getProfile(
 ): Promise<Profile | null> {
     const user = await db
         .prepare(
-            'SELECT id, username, created_at FROM users WHERE username_lower = ?',
+            'SELECT id, username, created_at, profile_url FROM users WHERE username_lower = ?',
         )
         .bind(username.toLowerCase())
-        .first<{ id: string; username: string; created_at: number }>();
+        .first<{
+            id: string;
+            username: string;
+            created_at: number;
+            profile_url: string | null;
+        }>();
     if (!user) return null;
 
     const res = await db
@@ -261,6 +267,7 @@ export async function getProfile(
         sessions,
         grand_total: myTotal,
         breakdown,
+        url: user.profile_url ?? null,
         ...totals,
     };
 }

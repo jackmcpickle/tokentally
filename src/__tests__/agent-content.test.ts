@@ -163,6 +163,7 @@ const fixtureProfile: Profile = {
     created_at: Date.UTC(2026, 0, 1),
     rank: 3,
     sessions: 20,
+    url: null,
     grand_total: 500_000,
     input_tokens: 300_000,
     output_tokens: 150_000,
