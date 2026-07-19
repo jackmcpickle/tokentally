@@ -36,6 +36,12 @@
             "globs": ["**/tokentally.mjs", "**/app.css"],
             "fallthrough": true,
         },
+        // Fonts embedded for server-side share-card rasterization (resvg).
+        {
+            "type": "Data",
+            "globs": ["**/*.ttf"],
+            "fallthrough": true,
+        },
     ],
     "observability": {
         "enabled": false,

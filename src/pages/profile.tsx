@@ -153,16 +153,7 @@ export const ProfilePage: FC<{ base: string; profile: Profile }> = ({
                 <h2 class="mt-0 mb-4 text-[22px] font-bold tracking-[-0.8px]">
                     Share
                 </h2>
-                <div class="overflow-hidden rounded-[15px] border border-border bg-panel">
-                    <img
-                        src={ogImage}
-                        width="1200"
-                        height="630"
-                        alt={`${p.username} share card`}
-                        class="block h-auto w-full"
-                    />
-                </div>
-                <div class="mt-4 flex flex-wrap gap-3">
+                <div class="flex flex-wrap gap-3">
                     <Button
                         variant="secondary"
                         data-share="copy"

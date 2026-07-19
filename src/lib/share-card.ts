@@ -14,7 +14,7 @@ export interface ShareCardPayload {
     allTime: ShareCardStats;
 }
 
-const FONT = 'Helvetica Neue, Helvetica, Arial, sans-serif';
+const FONT = 'Inter, Helvetica Neue, Helvetica, Arial, sans-serif';
 
 export function escapeXml(value: string): string {
     return value
