@@ -57,11 +57,25 @@ function Wordmark(props: {
 const SITE_DESCRIPTION =
     'tokenmaxer.quest — a public leaderboard of tokens burned by AI builders on Claude Code, Codex, opencode and pi.';
 
-export const Layout: FC<{ title: string; base: string; children?: Child }> = (
-    props,
-) => {
+const DEFAULT_OG_IMAGE_ALT =
+    'tokenmaxer.quest — token leaderboard for AI builders';
+
+type LayoutProps = {
+    title: string;
+    base: string;
+    children?: Child;
+    description?: string;
+    ogImage?: string;
+    ogUrl?: string;
+    ogImageAlt?: string;
+};
+
+export const Layout: FC<LayoutProps> = (props) => {
     const origin = props.base.replace(/\/$/u, '');
-    const ogImage = `${origin}/og.png`;
+    const description = props.description ?? SITE_DESCRIPTION;
+    const ogImage = props.ogImage ?? `${origin}/og.png`;
+    const ogUrl = props.ogUrl ?? origin;
+    const ogImageAlt = props.ogImageAlt ?? DEFAULT_OG_IMAGE_ALT;
     return (
         <html lang="en">
             <head>
@@ -73,7 +87,7 @@ export const Layout: FC<{ title: string; base: string; children?: Child }> = (
                 <title>{props.title}</title>
                 <meta
                     name="description"
-                    content={SITE_DESCRIPTION}
+                    content={description}
                 />
                 <meta
                     name="theme-color"
@@ -119,11 +133,11 @@ export const Layout: FC<{ title: string; base: string; children?: Child }> = (
                 />
                 <meta
                     property="og:description"
-                    content={SITE_DESCRIPTION}
+                    content={description}
                 />
                 <meta
                     property="og:url"
-                    content={origin}
+                    content={ogUrl}
                 />
                 <meta
                     property="og:image"
@@ -139,7 +153,7 @@ export const Layout: FC<{ title: string; base: string; children?: Child }> = (
                 />
                 <meta
                     property="og:image:alt"
-                    content="tokenmaxer.quest — token leaderboard for AI builders"
+                    content={ogImageAlt}
                 />
                 <meta
                     name="twitter:card"
@@ -151,7 +165,7 @@ export const Layout: FC<{ title: string; base: string; children?: Child }> = (
                 />
                 <meta
                     name="twitter:description"
-                    content={SITE_DESCRIPTION}
+                    content={description}
                 />
                 <meta
                     name="twitter:image"

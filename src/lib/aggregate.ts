@@ -58,6 +58,13 @@ export interface Profile extends Totals {
     url: string | null;
 }
 
+/** Lightweight windowed totals for share cards (no breakdown / rank). */
+export interface ProfileWindowTotals {
+    grand_total: number;
+    cost: number;
+    sessions: number;
+}
+
 interface GroupedRow {
     username: string;
     user_id: string;
@@ -273,5 +280,43 @@ export async function getProfile(
         breakdown,
         url: user.profile_url ?? null,
         ...totals,
+    };
+}
+
+/**
+ * Token/cost/session totals for one user in a time window.
+ * Returns `null` only when the username is unknown; zero totals when there is
+ * no usage in the window.
+ */
+export async function getProfileWindowTotals(
+    db: D1Database,
+    username: string,
+    window: TimeWindow,
+    now: number,
+): Promise<ProfileWindowTotals | null> {
+    const user = await db
+        .prepare('SELECT id FROM users WHERE username_lower = ?')
+        .bind(username.toLowerCase())
+        .first<{ id: string }>();
+    if (!user) return null;
+
+    const { results } = await db
+        .prepare(
+            `${GROUP_SELECT} WHERE su.user_id = ? AND su.started_at >= ? GROUP BY su.source, su.model`,
+        )
+        .bind(user.id, windowStart(window, now))
+        .all<GroupedRow>();
+
+    const totals = emptyTotals();
+    let sessions = 0;
+    for (const row of results) {
+        if (isSyntheticModel(row.model)) continue;
+        addRow(totals, row);
+        sessions += row.sessions;
+    }
+    return {
+        grand_total: grandTotal(totals),
+        cost: totals.cost,
+        sessions,
     };
 }

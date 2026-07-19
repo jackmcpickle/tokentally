@@ -6,4 +6,6 @@ dist/
 .DS_Store
 coverage/
 src/styles/app.css
+
 .worktrees/
+.superpowers/

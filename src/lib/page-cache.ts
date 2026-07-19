@@ -44,3 +44,8 @@ export const apiCache = createCacheMiddleware({
     // Reflects request Origin on ACAO; must not reuse another site's CORS headers.
     vary: ['Origin'],
 });
+
+/** Dynamic profile OG PNGs — keyed by URL only. */
+export const ogCache = createCacheMiddleware({
+    cacheName: 'tokentally-og',
+});

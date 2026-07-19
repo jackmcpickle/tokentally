@@ -7,6 +7,7 @@ import {
     invalidateProfileCache,
     leaderboardCacheKey,
     profileCacheKey,
+    profileWindowCacheKey,
 } from '@/lib/cached-aggregate';
 
 describe('cache keys', () => {
@@ -24,6 +25,10 @@ describe('cache keys', () => {
 
     it('profile key is lowercased', () => {
         expect(profileCacheKey('Ada')).toBe('agg:profile:v1:ada');
+    });
+
+    it('profile window key includes the window', () => {
+        expect(profileWindowCacheKey('Ada', '7d')).toBe('agg:profile7d:v1:ada');
     });
 });
 
@@ -64,11 +69,24 @@ describe('cachedProfile', () => {
         expect(first).toHaveBeenCalledTimes(2);
     });
 
-    it('drops the KV entry on invalidateProfileCache', async () => {
+    it('drops all-time and 7d KV entries on invalidateProfileCache', async () => {
         const kv = memoryKv();
         await kv.put(profileCacheKey('Ada'), '{"username":"Ada"}');
+        await kv.put(
+            profileWindowCacheKey('Ada', '7d'),
+            '{"grand_total":1,"cost":2,"sessions":3}',
+        );
         await invalidateProfileCache(kv, 'Ada');
         expect(await kv.get(profileCacheKey('Ada'))).toBeNull();
+        expect(await kv.get(profileWindowCacheKey('Ada', '7d'))).toBeNull();
+    });
+});
+
+describe('page-cache og middleware export', () => {
+    it('exports ogCache alongside pageCache', async () => {
+        const { ogCache, pageCache } = await import('@/lib/page-cache');
+        expect(typeof ogCache).toBe('function');
+        expect(typeof pageCache).toBe('function');
     });
 });
 
