@@ -13,6 +13,8 @@ import {
     sub,
 } from '@/pages/ui';
 
+const TURNSTILE_SITE_KEY = '0x4AAAAAAD4Z_7GmvQFkW-X3';
+
 function clientScript(base: string): string {
     return `
 const BASE = ${JSON.stringify(base)} || location.origin;
@@ -48,16 +50,22 @@ form.addEventListener('submit', async (e) => {
   e.preventDefault();
   err.textContent = '';
   const username = document.getElementById('username').value.trim();
+  const turnstileToken = form.querySelector('[name="cf-turnstile-response"]')?.value;
+  if (!turnstileToken) { err.textContent = 'Please complete the verification.'; return; }
   const btn = form.querySelector('button');
   btn.disabled = true; btn.textContent = 'Claiming…';
   try {
     const res = await fetch(BASE + '/api/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username })
+      body: JSON.stringify({ username, turnstileToken })
     });
     const data = await res.json();
-    if (!res.ok) { err.textContent = data.error || 'Registration failed'; return; }
+    if (!res.ok) {
+      err.textContent = data.error || 'Registration failed';
+      window.turnstile?.reset();
+      return;
+    }
     const s = snippets(data.username, data.token);
     document.getElementById('r-token').textContent = data.token;
     document.getElementById('r-user').textContent = data.username;
@@ -73,6 +81,7 @@ form.addEventListener('submit', async (e) => {
     result.scrollIntoView({ behavior: 'smooth' });
   } catch (e2) {
     err.textContent = 'Network error, please retry.';
+    window.turnstile?.reset();
   } finally {
     btn.disabled = false; btn.textContent = 'Claim username';
   }
@@ -125,6 +134,11 @@ export const Start: FC<{ base: string }> = ({ base }) => (
                             required
                         />
                     </label>
+                    <div
+                        class="cf-turnstile mb-4"
+                        data-sitekey={TURNSTILE_SITE_KEY}
+                        data-theme="dark"
+                    />
                     <Button
                         variant="primary"
                         type="submit"
@@ -306,6 +320,11 @@ export const Start: FC<{ base: string }> = ({ base }) => (
             </div>
         </div>
 
+        <script
+            src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+            async
+            defer
+        />
         {/* eslint-disable-next-line */}
         <script dangerouslySetInnerHTML={{ __html: clientScript(base) }} />
     </Layout>

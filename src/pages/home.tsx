@@ -1,6 +1,7 @@
 import type { FC } from 'hono/jsx';
 import type { LeaderboardEntry } from '@/lib/aggregate';
 import { formatTokens, formatUsd } from '@/lib/format';
+import { familyLabel } from '@/lib/model-family';
 import { Button } from '@/pages/components/button';
 import { Input } from '@/pages/components/input';
 import { Layout } from '@/pages/layout';
@@ -19,6 +20,8 @@ import {
 } from '@/pages/ui';
 import type { Metric, Source, TimeWindow } from '@/types';
 
+const AUTO_SUBMIT = 'this.form.requestSubmit()';
+
 const WINDOW_LABELS: Record<TimeWindow, string> = {
     today: 'Today',
     '7d': 'Last 7 days',
@@ -35,6 +38,7 @@ const METRIC_LABELS: Record<Metric, string> = {
 interface HomeProps {
     base: string;
     entries: LeaderboardEntry[];
+    /** Bundled model family ids for the filter (e.g. `sonnet`). */
     models: string[];
     window: TimeWindow;
     metric: Metric;
@@ -102,6 +106,7 @@ export const Home: FC<HomeProps> = (p) => (
                     variant="select"
                     id="filter-window"
                     name="window"
+                    onchange={AUTO_SUBMIT}
                 >
                     {(['today', '7d', '30d', 'all'] as TimeWindow[]).map(
                         (w) => (
@@ -125,6 +130,7 @@ export const Home: FC<HomeProps> = (p) => (
                     variant="select"
                     id="filter-metric"
                     name="metric"
+                    onchange={AUTO_SUBMIT}
                 >
                     {(['total', 'io', 'output', 'cost'] as Metric[]).map(
                         (m) => (
@@ -148,6 +154,7 @@ export const Home: FC<HomeProps> = (p) => (
                     variant="select"
                     id="filter-source"
                     name="source"
+                    onchange={AUTO_SUBMIT}
                 >
                     <option
                         value=""
@@ -190,6 +197,7 @@ export const Home: FC<HomeProps> = (p) => (
                     variant="select"
                     id="filter-model"
                     name="model"
+                    onchange={AUTO_SUBMIT}
                 >
                     <option
                         value=""
@@ -203,25 +211,11 @@ export const Home: FC<HomeProps> = (p) => (
                             value={m}
                             selected={m === p.model}
                         >
-                            {m}
+                            {familyLabel(m)}
                         </option>
                     ))}
                 </Input>
             </label>
-            <div class={filterLabel}>
-                <span
-                    class="invisible select-none"
-                    aria-hidden="true"
-                >
-                    &nbsp;
-                </span>
-                <Button
-                    variant="primary"
-                    type="submit"
-                >
-                    Apply
-                </Button>
-            </div>
         </form>
 
         <div class={panel}>

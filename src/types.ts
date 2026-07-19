@@ -3,6 +3,7 @@ export interface Env {
     RATE_LIMIT: KVNamespace;
     ENVIRONMENT: string;
     PUBLIC_BASE_URL: string;
+    TURNSTYLE_SECRET_KEY: string;
 }
 
 export type Source = 'claude_code' | 'codex' | 'opencode' | 'pi';

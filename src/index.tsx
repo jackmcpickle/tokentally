@@ -1,6 +1,10 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { getDistinctModels, getLeaderboard, getProfile } from '@/lib/aggregate';
+import {
+    getDistinctModelFamilies,
+    getLeaderboard,
+    getProfile,
+} from '@/lib/aggregate';
 import { About } from '@/pages/about';
 import { Home } from '@/pages/home';
 import { Layout } from '@/pages/layout';
@@ -97,7 +101,7 @@ app.get('/', async (c) => {
             { window, metric, source, model, limit: 100 },
             Date.now(),
         ),
-        getDistinctModels(c.env.DB),
+        getDistinctModelFamilies(c.env.DB),
     ]);
     return c.html(
         <Home

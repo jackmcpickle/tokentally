@@ -10,6 +10,26 @@ function clientIp(header: string | null): string {
     return header?.split(',')[0]?.trim() ?? 'unknown';
 }
 
+// Cloudflare Turnstile server-side verification.
+async function verifyTurnstile(
+    secret: string,
+    token: unknown,
+    ip: string,
+): Promise<boolean> {
+    if (typeof token !== 'string' || token.length === 0) return false;
+    const body = new FormData();
+    body.append('secret', secret);
+    body.append('response', token);
+    if (ip !== 'unknown') body.append('remoteip', ip);
+    const res = await fetch(
+        'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+        { method: 'POST', body },
+    ).catch(() => null);
+    if (!res) return false;
+    const data = await res.json<{ success?: boolean }>().catch(() => null);
+    return data?.success === true;
+}
+
 // POST /api/register  { username } -> { id, username, token }
 app.post('/register', async (c) => {
     const ip = clientIp(c.req.header('CF-Connecting-IP') ?? null);
@@ -27,8 +47,16 @@ app.post('/register', async (c) => {
     }
 
     const body = await c.req
-        .json<{ username?: unknown }>()
-        .catch(() => ({ username: undefined }));
+        .json<{ username?: unknown; turnstileToken?: unknown }>()
+        .catch(() => ({ username: undefined, turnstileToken: undefined }));
+
+    const human = await verifyTurnstile(
+        c.env.TURNSTYLE_SECRET_KEY,
+        body.turnstileToken,
+        ip,
+    );
+    if (!human) return c.json({ error: 'verification failed' }, 403);
+
     const check = validateUsername(body.username);
     if (!check.ok) return c.json({ error: check.error }, 400);
     const username = check.value;
