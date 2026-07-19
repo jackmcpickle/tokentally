@@ -25,8 +25,8 @@ const result = document.getElementById('result');
 function snippets(username, token) {
   const setup =
     'npm install -g tokenmaxer && \\\\\\n' +
-    '  mkdir -p ~/.tokentally && \\\\\\n' +
-    "  printf '%s' '" + JSON.stringify({ apiBase: BASE, token }) + "' > ~/.tokentally/config.json";
+    '  mkdir -p ~/.tokenmaxer && \\\\\\n' +
+    "  printf '%s' '" + JSON.stringify({ apiBase: BASE, token }) + "' > ~/.tokenmaxer/config.json";
   const claude = JSON.stringify({
     hooks: {
       SessionStart: [{ type: 'shell', command: 'tokenmaxer claude-sessionstart' }],
@@ -52,8 +52,8 @@ function snippets(username, token) {
   const agent =
     'Help me finish setting up tokenmaxer.quest, an open-source token-usage leaderboard.\\n' +
     'It uploads only per-session token counts, model names, session ids and timestamps -\\n' +
-    'never prompts, code, or credentials. Source: https://github.com/jackmcpickle/tokentally\\n' +
-    'I already ran the one-time setup, so ~/.tokentally/config.json holds my API token.\\n' +
+    'never prompts, code, or credentials. Source: https://github.com/jackmcpickle/tokenmaxer\\n' +
+    'I already ran the one-time setup, so ~/.tokenmaxer/config.json holds my API token.\\n' +
     'Read ' + BASE + '/start.md for the exact hook snippets, then:\\n' +
     '1. Install the reporter: npm install -g tokenmaxer (a single zero-dependency script - review it first if you like).\\n' +
     '2. Detect which coding tools I use (Claude Code / Codex / opencode / pi / Cursor) and configure the matching hooks from start.md.\\n' +
@@ -284,7 +284,7 @@ export const Start: FC<{
                         <code>tokenmaxer</code>
                     </a>{' '}
                     reporter from npm and writes your config (the token lives
-                    only in <code>~/.tokentally/config.json</code>, never in
+                    only in <code>~/.tokenmaxer/config.json</code>, never in
                     shared settings). It uploads only per-session token counts,
                     model names, session ids and timestamps — never prompts,
                     code, or credentials; run any command with{' '}
@@ -451,7 +451,7 @@ export const Start: FC<{
                     <p class={`${muted} mt-3 text-[13px]`}>
                         If auto-auth fails (Cursor not logged in on this
                         machine), see the{' '}
-                        <a href="https://github.com/jackmcpickle/tokentally/tree/main/reporter">
+                        <a href="https://github.com/jackmcpickle/tokenmaxer/tree/main/reporter">
                             reporter README
                         </a>{' '}
                         for the manual <code>cursorCookie</code> fallback.

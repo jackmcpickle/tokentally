@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // The reporter is a plain .mjs module; import its exported pure functions.
 import {
+    loadConfig,
     parseClaudeTranscript,
     parseCodexRollout,
     parseOpencodeMessages,
@@ -333,5 +337,108 @@ describe('parseCursorEvents', () => {
                 { timestamp: '123', tokenUsage: { inputTokens: 1 } }, // no model -> 'unknown'
             ]),
         ).toHaveLength(1);
+    });
+});
+
+describe('loadConfig', () => {
+    const envKeys = [
+        'TOKENMAXER_API_BASE',
+        'TOKENMAXER_TOKEN',
+        'TOKENTALLY_API_BASE',
+        'TOKENTALLY_TOKEN',
+    ] as const;
+    let home: string;
+    let savedHome: string | undefined;
+    const savedEnv: Partial<Record<(typeof envKeys)[number], string | undefined>> =
+        {};
+
+    beforeEach(() => {
+        home = mkdtempSync(join(tmpdir(), 'tokenmaxer-cfg-'));
+        savedHome = process.env.HOME;
+        process.env.HOME = home;
+        for (const key of envKeys) {
+            savedEnv[key] = process.env[key];
+            delete process.env[key];
+        }
+    });
+
+    afterEach(() => {
+        if (savedHome === undefined) delete process.env.HOME;
+        else process.env.HOME = savedHome;
+        for (const key of envKeys) {
+            if (savedEnv[key] === undefined) delete process.env[key];
+            else process.env[key] = savedEnv[key];
+        }
+        rmSync(home, { recursive: true, force: true });
+    });
+
+    function writeCfg(dirName: string, data: object) {
+        const dir = join(home, dirName);
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(join(dir, 'config.json'), JSON.stringify(data));
+    }
+
+    it('loads ~/.tokenmaxer/config.json', () => {
+        writeCfg('.tokenmaxer', {
+            apiBase: 'https://example.com',
+            token: 'tt_new',
+        });
+        expect(loadConfig()).toEqual({
+            apiBase: 'https://example.com',
+            token: 'tt_new',
+            cursorCookie: undefined,
+        });
+    });
+
+    it('falls back to ~/.tokentally/config.json', () => {
+        writeCfg('.tokentally', {
+            apiBase: 'https://legacy.com/',
+            token: 'tt_old',
+        });
+        expect(loadConfig()).toMatchObject({
+            apiBase: 'https://legacy.com',
+            token: 'tt_old',
+        });
+    });
+
+    it('prefers ~/.tokenmaxer over ~/.tokentally', () => {
+        writeCfg('.tokenmaxer', {
+            apiBase: 'https://new.com',
+            token: 'tt_new',
+        });
+        writeCfg('.tokentally', {
+            apiBase: 'https://old.com',
+            token: 'tt_old',
+        });
+        expect(loadConfig().token).toBe('tt_new');
+    });
+
+    it('prefers TOKENMAXER_* over TOKENTALLY_* over file', () => {
+        writeCfg('.tokenmaxer', {
+            apiBase: 'https://file.com',
+            token: 'tt_file',
+        });
+        process.env.TOKENTALLY_TOKEN = 'tt_legacy_env';
+        process.env.TOKENMAXER_TOKEN = 'tt_new_env';
+        process.env.TOKENMAXER_API_BASE = 'https://env.com';
+        expect(loadConfig()).toMatchObject({
+            apiBase: 'https://env.com',
+            token: 'tt_new_env',
+        });
+    });
+
+    it('uses TOKENTALLY_* when TOKENMAXER_* unset', () => {
+        process.env.TOKENTALLY_API_BASE = 'https://legacy-env.com';
+        process.env.TOKENTALLY_TOKEN = 'tt_legacy_env';
+        expect(loadConfig()).toMatchObject({
+            apiBase: 'https://legacy-env.com',
+            token: 'tt_legacy_env',
+        });
+    });
+
+    it('throws a tokenmaxer-branded error when unconfigured', () => {
+        expect(() => loadConfig()).toThrow(
+            /tokenmaxer not configured.*~\/\.tokenmaxer/u,
+        );
     });
 });

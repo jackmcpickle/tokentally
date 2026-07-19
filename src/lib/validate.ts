@@ -16,6 +16,7 @@ const RESERVED = new Set([
     'login',
     'register',
     'tokentally',
+    'tokenmaxer',
     'me',
     'new',
 ]);

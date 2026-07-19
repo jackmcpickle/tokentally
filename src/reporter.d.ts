@@ -43,6 +43,11 @@ declare module '*/tokentally.mjs' {
         parsed: ParsedTranscript,
         path?: string,
     ): ReporterRow[];
+    export function loadConfig(): {
+        apiBase: string;
+        token: string;
+        cursorCookie?: string;
+    };
 
     const content: string;
     export default content;

@@ -1,4 +1,4 @@
-const REPO_URL = 'https://github.com/jackmcpickle/tokentally';
+const REPO_URL = 'https://github.com/jackmcpickle/tokenmaxer';
 
 function snippets(base: string): {
     setup: string;
@@ -11,10 +11,10 @@ function snippets(base: string): {
 } {
     const setup =
         'npm install -g tokenmaxer && \\\n' +
-        '  mkdir -p ~/.tokentally && \\\n' +
+        '  mkdir -p ~/.tokenmaxer && \\\n' +
         "  printf '%s' '" +
         JSON.stringify({ apiBase: base, token: 'YOUR_TOKEN' }) +
-        "' > ~/.tokentally/config.json";
+        "' > ~/.tokenmaxer/config.json";
 
     const claude = JSON.stringify(
         {
@@ -67,7 +67,7 @@ function snippets(base: string): {
         'never prompts, code, or credentials. Source: ' +
         REPO_URL +
         '\n' +
-        'I already ran the one-time setup, so ~/.tokentally/config.json holds my API token.\n' +
+        'I already ran the one-time setup, so ~/.tokenmaxer/config.json holds my API token.\n' +
         'Read ' +
         base +
         '/start.md for the exact hook snippets, then:\n' +
@@ -111,7 +111,7 @@ The response includes your username and token (shown once). Save the token — l
 
 ## One-time setup
 
-Installs the reporter from npm and writes your config (the token lives only in \`~/.tokentally/config.json\`, never in shared settings). Run in a terminal:
+Installs the reporter from npm and writes your config (the token lives only in \`~/.tokenmaxer/config.json\`, never in shared settings). Run in a terminal:
 
 \`\`\`shell
 ${s.setup}

@@ -44,7 +44,7 @@ import type { Env } from '@/types';
 // eslint-disable-next-line import/default
 import REPORTER_SOURCE from '../reporter/tokentally.mjs';
 
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -80,7 +80,7 @@ app.use(
     }),
 );
 
-app.get('/api/health', (c) => c.json({ name: 'tokentally', version: VERSION }));
+app.get('/api/health', (c) => c.json({ name: 'tokenmaxer', version: VERSION }));
 app.route('/api', registerRoutes);
 app.route('/api', ingestRoutes);
 app.route('/api', historyRoutes);

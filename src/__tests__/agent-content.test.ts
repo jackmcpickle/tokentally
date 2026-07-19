@@ -39,6 +39,8 @@ describe('startMarkdown', () => {
         expect(md).toContain('YOUR_USERNAME');
         expect(md).toContain('YOUR_TOKEN');
         expect(md).toContain('npm install -g tokenmaxer');
+        expect(md).toContain('~/.tokenmaxer/config.json');
+        expect(md).not.toContain('~/.tokentally');
         expect(md).toContain('## What leaves your machine');
         expect(md).toContain('--dry-run');
         expect(md).toContain('## Agent prompt');
