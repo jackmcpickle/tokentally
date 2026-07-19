@@ -10,17 +10,17 @@ Let a token holder set or clear an optional **external** public profile URL on t
 
 ## Decisions
 
-| Topic          | Choice                                                                 |
-| -------------- | ---------------------------------------------------------------------- |
-| Link meaning   | Optional external URL (GitHub, personal site, etc.)                    |
-| Auth           | Existing Bearer token (`Authorization: Bearer tt_…`)                   |
-| Write API      | `POST /api/profile` with `{ "url": "…" }` (matches `token/rotate`)   |
-| Validation     | `https:` only; max 2048 chars; `""` / `null` clears                    |
-| Display        | Profile only: `/u/:username`, `.md` twin, `GET /api/u/:username`       |
-| Leaderboard    | No link column                                                         |
-| CLI            | `tokenmaxer set-profile-url <url>` / `--clear`                         |
-| Username       | Unchanged (claim once; not editable)                                   |
-| Browser UI     | Out of scope                                                           |
+| Topic        | Choice                                                             |
+| ------------ | ------------------------------------------------------------------ |
+| Link meaning | Optional external URL (GitHub, personal site, etc.)                |
+| Auth         | Existing Bearer token (`Authorization: Bearer tt_…`)               |
+| Write API    | `POST /api/profile` with `{ "url": "…" }` (matches `token/rotate`) |
+| Validation   | `https:` only; max 2048 chars; `""` / `null` clears                |
+| Display      | Profile only: `/u/:username`, `.md` twin, `GET /api/u/:username`   |
+| Leaderboard  | No link column                                                     |
+| CLI          | `tokenmaxer set-profile-url <url>` / `--clear`                     |
+| Username     | Unchanged (claim once; not editable)                               |
+| Browser UI   | Out of scope                                                       |
 
 ## Data model
 
@@ -58,11 +58,11 @@ When cleared, `"url": null`.
 
 **Errors:**
 
-| Status | When                                              |
-| ------ | ------------------------------------------------- |
-| 401    | Missing/invalid Bearer                            |
-| 400    | Invalid URL (scheme, parse, length)                |
-| 429    | Rate limited                                      |
+| Status | When                                |
+| ------ | ----------------------------------- |
+| 401    | Missing/invalid Bearer              |
+| 400    | Invalid URL (scheme, parse, length) |
+| 429    | Rate limited                        |
 
 **Rate limit:** 20 requests / hour per user id via the existing KV `rateLimit` helper (`rl:profile:${user.id}`).
 
@@ -111,13 +111,13 @@ Header comment usage block and `reporter/README.md` list the new command.
 
 Update:
 
-| Surface                         | Change                                      |
-| ------------------------------- | ------------------------------------------- |
-| Root `README.md` API table      | Add `POST /api/profile`                     |
-| Root `README.md` onboarding     | Optional one-liner for `set-profile-url`    |
-| `reporter/README.md` Usage      | Document `set-profile-url` / `--clear`      |
-| `/about` + about Markdown       | Optional public profile link is allowed     |
-| `llms.txt` / `llms-full.txt`        | Mention `POST /api/profile` and CLI if those indexes list write APIs |
+| Surface                      | Change                                                               |
+| ---------------------------- | -------------------------------------------------------------------- |
+| Root `README.md` API table   | Add `POST /api/profile`                                              |
+| Root `README.md` onboarding  | Optional one-liner for `set-profile-url`                             |
+| `reporter/README.md` Usage   | Document `set-profile-url` / `--clear`                               |
+| `/about` + about Markdown    | Optional public profile link is allowed                              |
+| `llms.txt` / `llms-full.txt` | Mention `POST /api/profile` and CLI if those indexes list write APIs |
 
 Keep privacy framing: still no email; the link is opt-in public content the user chooses to publish.
 

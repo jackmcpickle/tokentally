@@ -38,7 +38,7 @@ export const ProfilePage: FC<{ base: string; profile: Profile }> = ({
                 {p.sessions} sessions tracked
             </p>
             {p.url ? (
-                <p class="reveal reveal-delay mb-0 mt-3 text-[16px]">
+                <p class="reveal reveal-delay mt-3 mb-0 text-[16px]">
                     <a
                         class="text-accent"
                         href={p.url}

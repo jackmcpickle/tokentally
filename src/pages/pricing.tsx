@@ -17,8 +17,8 @@ export const Pricing: FC<{ base: string }> = ({ base }) => (
             <h1 class="reveal">Reference pricing</h1>
             <p class={`${sub} reveal reveal-delay`}>
                 Estimated USD per million tokens used for the leaderboard cost
-                metric. Matching is by longest substring of the model id —
-                these are approximations, not invoices.
+                metric. Matching is by longest substring of the model id — these
+                are approximations, not invoices.
             </p>
         </section>
 

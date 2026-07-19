@@ -22,25 +22,25 @@
 
 ## File map
 
-| File | Responsibility |
-| ---- | -------------- |
-| `drizzle/0002_profile_url.sql` | Add `users.profile_url` |
-| `src/lib/validate.ts` | `validateProfileUrl` |
-| `src/lib/aggregate.ts` | `Profile.url`; SELECT + map in `getProfile` |
-| `src/routes/profile.ts` | `POST /api/profile` |
-| `src/index.tsx` | Mount profile routes |
-| `src/pages/profile.tsx` | HTML link when `url` set |
-| `src/content/profile.md.ts` | Markdown link when `url` set |
-| `src/content/about.md.ts` | Opt-in public link note |
-| `src/pages/about.tsx` | Same privacy note if duplicated in HTML |
-| `src/content/llms.ts` | List `POST /api/profile` |
-| `reporter/tokentally.mjs` | `set-profile-url` command + exported arg/body helpers |
-| `reporter/README.md` | Document CLI |
-| `README.md` | API table + optional CLI one-liner |
-| `src/__tests__/validate.test.ts` | URL validation |
-| `src/__tests__/profile-route.test.ts` | Route auth/set/clear/invalid |
-| `src/__tests__/agent-content.test.ts` | Profile MD + about + llms mentions |
-| `src/__tests__/reporter.test.ts` | CLI arg/body helpers |
+| File                                  | Responsibility                                        |
+| ------------------------------------- | ----------------------------------------------------- |
+| `drizzle/0002_profile_url.sql`        | Add `users.profile_url`                               |
+| `src/lib/validate.ts`                 | `validateProfileUrl`                                  |
+| `src/lib/aggregate.ts`                | `Profile.url`; SELECT + map in `getProfile`           |
+| `src/routes/profile.ts`               | `POST /api/profile`                                   |
+| `src/index.tsx`                       | Mount profile routes                                  |
+| `src/pages/profile.tsx`               | HTML link when `url` set                              |
+| `src/content/profile.md.ts`           | Markdown link when `url` set                          |
+| `src/content/about.md.ts`             | Opt-in public link note                               |
+| `src/pages/about.tsx`                 | Same privacy note if duplicated in HTML               |
+| `src/content/llms.ts`                 | List `POST /api/profile`                              |
+| `reporter/tokentally.mjs`             | `set-profile-url` command + exported arg/body helpers |
+| `reporter/README.md`                  | Document CLI                                          |
+| `README.md`                           | API table + optional CLI one-liner                    |
+| `src/__tests__/validate.test.ts`      | URL validation                                        |
+| `src/__tests__/profile-route.test.ts` | Route auth/set/clear/invalid                          |
+| `src/__tests__/agent-content.test.ts` | Profile MD + about + llms mentions                    |
+| `src/__tests__/reporter.test.ts`      | CLI arg/body helpers                                  |
 
 ---
 
@@ -54,9 +54,9 @@
 **Interfaces:**
 
 - Produces: `validateProfileUrl(raw: unknown): Result<string | null>`
-  - `ok: true, value: null` → clear
-  - `ok: true, value: string` → normalized `https:` URL (`URL.href`)
-  - `ok: false, error: string` → reject
+    - `ok: true, value: null` → clear
+    - `ok: true, value: string` → normalized `https:` URL (`URL.href`)
+    - `ok: false, error: string` → reject
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -300,7 +300,11 @@ function kv(): KVNamespace {
         delete: async (key: string) => {
             store.delete(key);
         },
-        list: async () => ({ keys: [], list_complete: true, cacheStatus: null }),
+        list: async () => ({
+            keys: [],
+            list_complete: true,
+            cacheStatus: null,
+        }),
         getWithMetadata: async () => ({ value: null, metadata: null }),
     } as unknown as KVNamespace;
 }
@@ -509,7 +513,7 @@ Expected: PASS
 Add a row under the API table in `README.md`:
 
 ```md
-| POST   | `/api/profile`      | Bearer | set/clear `{url}` (https public profile link)       |
+| POST | `/api/profile` | Bearer | set/clear `{url}` (https public profile link) |
 ```
 
 - [ ] **Step 6: Commit**
@@ -572,9 +576,7 @@ Expected: FAIL on new assertions.
 In `src/content/profile.md.ts`, after the rank line, when `p.url` is set:
 
 ```ts
-const linkLine = p.url
-    ? `\n\nProfile: [${p.url}](${p.url})`
-    : '';
+const linkLine = p.url ? `\n\nProfile: [${p.url}](${p.url})` : '';
 
 return `# ${p.username}
 
@@ -590,13 +592,19 @@ ${summary}
 In `src/pages/profile.tsx`, under the hero subtitle (still inside the hero section), when `p.url` is set:
 
 ```tsx
-{p.url ? (
-    <p class="reveal reveal-delay mb-0 mt-3 text-[16px]">
-        <a href={p.url} rel="noopener noreferrer" target="_blank">
-            {p.url}
-        </a>
-    </p>
-) : null}
+{
+    p.url ? (
+        <p class="reveal reveal-delay mb-0 mt-3 text-[16px]">
+            <a
+                href={p.url}
+                rel="noopener noreferrer"
+                target="_blank"
+            >
+                {p.url}
+            </a>
+        </p>
+    ) : null;
+}
 ```
 
 Use existing link styles from the design system (accent blue hyperlinks) — do not introduce a card.
@@ -646,15 +654,15 @@ EOF
 **Interfaces:**
 
 - Produces (exported for tests):
-  - `parseSetProfileUrlArgs(argv: string[]): { clear: true } | { clear: false; url: string }`
-    - throws `Error` with usage message on bad args
-  - `buildProfileUrlBody(parsed): { url: string | null }`
+    - `parseSetProfileUrlArgs(argv: string[]): { clear: true } | { clear: false; url: string }`
+        - throws `Error` with usage message on bad args
+    - `buildProfileUrlBody(parsed): { url: string | null }`
 
 - CLI:
-  - `tokenmaxer set-profile-url <https-url>`
-  - `tokenmaxer set-profile-url --clear`
-  - honors global `--dry-run`
-  - exits `1` on failure (unlike hooks, which stay exit `0`)
+    - `tokenmaxer set-profile-url <https-url>`
+    - `tokenmaxer set-profile-url --clear`
+    - honors global `--dry-run`
+    - exits `1` on failure (unlike hooks, which stay exit `0`)
 
 - [ ] **Step 1: Write failing reporter tests**
 
@@ -708,7 +716,11 @@ Near other exports / before `main`, add:
 export function parseSetProfileUrlArgs(argv) {
     const args = argv.filter((a) => a !== '--dry-run');
     if (args.length === 1 && args[0] === '--clear') return { clear: true };
-    if (args.length === 1 && typeof args[0] === 'string' && args[0].length > 0) {
+    if (
+        args.length === 1 &&
+        typeof args[0] === 'string' &&
+        args[0].length > 0
+    ) {
         return { clear: false, url: args[0] };
     }
     throw new Error(
@@ -809,20 +821,20 @@ EOF
 
 ## Spec coverage checklist
 
-| Spec requirement | Task |
-| ---------------- | ---- |
-| `users.profile_url` migration | 2 |
-| `validateProfileUrl` https-only / clear / length / credentials | 1 |
-| `POST /api/profile` Bearer + rate limit 20/h | 3 |
-| JSON `{ username, url }` | 3 |
-| `GET /api/u/:username` includes `url` | 2 (via `getProfile`) |
-| HTML profile link | 4 |
-| Markdown profile link | 4 |
-| Not on leaderboard | (no task — leave unchanged) |
-| `tokenmaxer set-profile-url` / `--clear` / `--dry-run` | 5 |
-| Exit non-zero on CLI failure | 5 |
-| README / reporter README / about / llms docs | 3, 4, 5 |
-| Unit + route + reporter tests | 1, 3, 4, 5 |
+| Spec requirement                                               | Task                        |
+| -------------------------------------------------------------- | --------------------------- |
+| `users.profile_url` migration                                  | 2                           |
+| `validateProfileUrl` https-only / clear / length / credentials | 1                           |
+| `POST /api/profile` Bearer + rate limit 20/h                   | 3                           |
+| JSON `{ username, url }`                                       | 3                           |
+| `GET /api/u/:username` includes `url`                          | 2 (via `getProfile`)        |
+| HTML profile link                                              | 4                           |
+| Markdown profile link                                          | 4                           |
+| Not on leaderboard                                             | (no task — leave unchanged) |
+| `tokenmaxer set-profile-url` / `--clear` / `--dry-run`         | 5                           |
+| Exit non-zero on CLI failure                                   | 5                           |
+| README / reporter README / about / llms docs                   | 3, 4, 5                     |
+| Unit + route + reporter tests                                  | 1, 3, 4, 5                  |
 
 ## Out of scope (do not implement)
 

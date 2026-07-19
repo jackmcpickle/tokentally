@@ -1,4 +1,4 @@
-# TokenTally
+# tokenmaxer.quest
 
 A public leaderboard of the tokens AI builders burn with **Claude Code**, **Codex**,
 **opencode**, **pi** and **Cursor**. Pick a username, paste a couple of snippets, and your coding
@@ -105,8 +105,8 @@ After claiming a username at `/start`, users get a personalized version of:
 
 ```sh
 npm install -g tokenmaxer && \
-  mkdir -p ~/.tokentally && \
-  printf '%s' '{"apiBase":"https://<host>","token":"tt_..."}' > ~/.tokentally/config.json
+  mkdir -p ~/.tokenmaxer && \
+  printf '%s' '{"apiBase":"https://<host>","token":"tt_..."}' > ~/.tokenmaxer/config.json
 ```
 
 **Claude Code** — merge into `~/.claude/settings.json`:
@@ -152,12 +152,13 @@ opencode() { command opencode "$@"; tokenmaxer opencode-sessionstart; }
 pi() { command pi "$@"; tokenmaxer pi-sessionstart; }
 ```
 
-The token lives only in `~/.tokentally/config.json`, never in shared settings files.
+The token lives only in `~/.tokenmaxer/config.json`, never in shared settings files.
+(Legacy `~/.tokentally/config.json` and `TOKENTALLY_*` env vars still work as fallbacks.)
 
 ## Backfilling past history
 
 The hooks only report sessions going forward (`SessionStart` catch-up scans the last
-`TOKENTALLY_DAYS`, default 3). To load everything you ran _before_ installing TokenTally,
+`TOKENMAXER_DAYS`, default 3). To load everything you ran _before_ installing tokenmaxer,
 run the one-time backfill — it computes token-count summaries from all local
 Claude Code / Codex / opencode / pi / Cursor transcripts and uploads only those summaries:
 

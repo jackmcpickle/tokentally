@@ -1,4 +1,8 @@
-import { distinctFamilies, familyOf, isSyntheticModel } from '@/lib/model-family';
+import {
+    distinctFamilies,
+    familyOf,
+    isSyntheticModel,
+} from '@/lib/model-family';
 import { estimateCost } from '@/lib/pricing';
 import type { Metric, Source, TimeWindow } from '@/types';
 

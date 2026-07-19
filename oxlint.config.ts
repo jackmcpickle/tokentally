@@ -198,6 +198,7 @@ export default defineConfig({
             files: [
                 'src/__tests__/reporter.test.ts',
                 'src/__tests__/reporter-privacy.test.ts',
+                'src/__tests__/reporter-cli.test.ts',
             ],
             rules: {
                 'import/no-relative-parent-imports': 'off',

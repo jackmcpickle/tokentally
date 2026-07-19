@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// TokenTally reporter — zero-dependency Node script.
+// tokenmaxer reporter — zero-dependency Node script.
 //
 // Reads Claude Code / Codex session transcripts, sums token usage per model, and
-// POSTs cumulative per-session totals to the TokenTally API. Reporting is
+// POSTs cumulative per-session totals to the tokenmaxer.quest API. Reporting is
 // idempotent (keyed by session id), so running it on SessionStart and SessionEnd
 // can never double-count.
 //
@@ -11,22 +11,23 @@
 // --dry-run to any command to print the exact payloads instead of sending them.
 // The Cursor session cookie (when used) is sent only to cursor.com.
 //
-// Config: ~/.tokentally/config.json  =>  { "apiBase": "https://...", "token": "tt_..." }
-// (env TOKENTALLY_API_BASE / TOKENTALLY_TOKEN override the file.)
+// Config: ~/.tokenmaxer/config.json  =>  { "apiBase": "https://...", "token": "tt_..." }
+// (env TOKENMAXER_API_BASE / TOKENMAXER_TOKEN override the file.)
+// Legacy fallbacks: ~/.tokentally/config.json and TOKENTALLY_* env vars.
 //
 // Usage:
-//   node tokentally.mjs claude-sessionend        # hook: parse the just-ended transcript (stdin JSON)
-//   node tokentally.mjs claude-sessionstart      # hook: catch up recent Claude sessions
-//   node tokentally.mjs codex-sessionstart       # hook: catch up recent Codex sessions
-//   node tokentally.mjs opencode-sessionstart    # hook: catch up recent opencode sessions
-//   node tokentally.mjs pi-sessionstart          # hook: catch up recent pi sessions
-//   node tokentally.mjs claude-report <path>     # parse one Claude transcript
-//   node tokentally.mjs codex-report <path>      # parse one Codex rollout
-//   node tokentally.mjs opencode-report <sessID> # parse one opencode session
-//   node tokentally.mjs pi-report <path>         # parse one pi session file
-//   node tokentally.mjs cursor-sync                # sync recent Cursor dashboard usage
-//   node tokentally.mjs backfill [claude|codex|opencode|pi|cursor] # one-time: upload ALL past history
-//   node tokentally.mjs set-profile-url <https-url>|--clear # set or clear public profile link
+//   tokenmaxer claude-sessionend        # hook: parse the just-ended transcript (stdin JSON)
+//   tokenmaxer claude-sessionstart      # hook: catch up recent Claude sessions
+//   tokenmaxer codex-sessionstart       # hook: catch up recent Codex sessions
+//   tokenmaxer opencode-sessionstart    # hook: catch up recent opencode sessions
+//   tokenmaxer pi-sessionstart          # hook: catch up recent pi sessions
+//   tokenmaxer claude-report <path>     # parse one Claude transcript
+//   tokenmaxer codex-report <path>      # parse one Codex rollout
+//   tokenmaxer opencode-report <sessID> # parse one opencode session
+//   tokenmaxer pi-report <path>         # parse one pi session file
+//   tokenmaxer cursor-sync              # sync recent Cursor dashboard usage
+//   tokenmaxer backfill [claude|codex|opencode|pi|cursor] # one-time: upload ALL past history
+//   tokenmaxer set-profile-url <https-url>|--clear # set or clear public profile link
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -35,7 +36,10 @@ import { DatabaseSync } from 'node:sqlite';
 import { pathToFileURL } from 'node:url';
 
 const CATCHUP_DAYS =
-    Number.parseInt(process.env.TOKENTALLY_DAYS ?? '3', 10) || 3;
+    Number.parseInt(
+        process.env.TOKENMAXER_DAYS ?? process.env.TOKENTALLY_DAYS ?? '3',
+        10,
+    ) || 3;
 const MAX_SESSIONS_PER_REQUEST = 200;
 // Bulk history backfill posts to a separate endpoint in larger chunks.
 const HISTORY_CHUNK = 500;
@@ -384,7 +388,7 @@ export function sessionIdFromPath(path) {
 /** Claude Code `<synthetic>` turns — never report or score. */
 function isSyntheticModel(model) {
     if (typeof model !== 'string') return false;
-    const m = model.toLowerCase().trim().replace(/^<|>$/g, '');
+    const m = model.toLowerCase().trim().replace(/^<|>$/gu, '');
     return m === 'synthetic';
 }
 
@@ -554,19 +558,30 @@ function reportOneOpencodeSession(sessionArg) {
 
 // ------------------------------------------------------------------ io -------
 
-function loadConfig() {
-    let file = {};
+function readConfigFile(dirName) {
     try {
         const raw = readFileSync(
-            join(homedir(), '.tokentally', 'config.json'),
+            join(homedir(), dirName, 'config.json'),
             'utf8',
         );
-        file = JSON.parse(raw);
+        return JSON.parse(raw);
     } catch {
-        /* fall through to env */
+        return null;
     }
-    const apiBase = process.env.TOKENTALLY_API_BASE ?? file.apiBase;
-    const token = process.env.TOKENTALLY_TOKEN ?? file.token;
+}
+
+export function loadConfig() {
+    // Prefer ~/.tokenmaxer; fall back to legacy ~/.tokentally.
+    const file =
+        readConfigFile('.tokenmaxer') ?? readConfigFile('.tokentally') ?? {};
+    const apiBase =
+        process.env.TOKENMAXER_API_BASE ??
+        process.env.TOKENTALLY_API_BASE ??
+        file.apiBase;
+    const token =
+        process.env.TOKENMAXER_TOKEN ??
+        process.env.TOKENTALLY_TOKEN ??
+        file.token;
     if (!apiBase || !token) {
         // Dry runs never send anything, so let them work before configuration.
         if (DRY_RUN) {
@@ -580,7 +595,7 @@ function loadConfig() {
             };
         }
         throw new Error(
-            'TokenTally not configured (missing apiBase/token in ~/.tokentally/config.json)',
+            'tokenmaxer not configured (missing apiBase/token in ~/.tokenmaxer/config.json)',
         );
     }
     return {
@@ -714,7 +729,7 @@ async function postBatch(cfg, source, batch, path) {
                 ? data.accepted
                 : batch.length;
         }
-        process.stderr.write(`tokentally: ingest failed (${res.status})\n`);
+        process.stderr.write(`tokenmaxer: ingest failed (${res.status})\n`);
         return 0;
     } finally {
         clearTimeout(timer);
@@ -757,7 +772,11 @@ function parseFile(path, source) {
 export function parseSetProfileUrlArgs(argv) {
     const args = argv.filter((a) => a !== '--dry-run');
     if (args.length === 1 && args[0] === '--clear') return { clear: true };
-    if (args.length === 1 && typeof args[0] === 'string' && args[0].length > 0) {
+    if (
+        args.length === 1 &&
+        typeof args[0] === 'string' &&
+        args[0].length > 0
+    ) {
         return { clear: false, url: args[0] };
     }
     throw new Error(
@@ -810,6 +829,15 @@ async function setProfileUrl(cfg, argv) {
     }
 }
 
+async function runSetProfileUrl(argv) {
+    try {
+        await setProfileUrl(loadConfig(), argv);
+    } catch (err) {
+        process.stderr.write(`tokenmaxer: ${err?.message ?? err}\n`);
+        process.exit(1);
+    }
+}
+
 async function claudeSessionEnd(cfg) {
     const stdin = await readStdin();
     let hook = {};
@@ -826,7 +854,7 @@ async function claudeSessionEnd(cfg) {
     const rows = toRows(parsed, path);
     const { accepted } = await postSessions(cfg, 'claude_code', rows);
     process.stderr.write(
-        `tokentally: reported ${accepted} row(s) for the current session\n`,
+        `tokenmaxer: reported ${accepted} row(s) for the current session\n`,
     );
 }
 
@@ -838,7 +866,7 @@ async function claudeCatchup(cfg) {
     const rows = files.flatMap((f) => safeParse(f, 'claude_code'));
     const { accepted } = await postSessions(cfg, 'claude_code', rows);
     process.stderr.write(
-        `tokentally: caught up ${accepted} row(s) from ${files.length} file(s)\n`,
+        `tokenmaxer: caught up ${accepted} row(s) from ${files.length} file(s)\n`,
     );
 }
 
@@ -850,7 +878,7 @@ async function codexCatchup(cfg) {
     const rows = files.flatMap((f) => safeParse(f, 'codex'));
     const { accepted } = await postSessions(cfg, 'codex', rows);
     process.stderr.write(
-        `tokentally: caught up ${accepted} row(s) from ${files.length} file(s)\n`,
+        `tokenmaxer: caught up ${accepted} row(s) from ${files.length} file(s)\n`,
     );
 }
 
@@ -858,7 +886,7 @@ async function opencodeCatchup(cfg) {
     const since = Date.now() - CATCHUP_DAYS * 86_400_000;
     const rows = collectOpencodeRows(since);
     const { accepted } = await postSessions(cfg, 'opencode', rows);
-    process.stderr.write(`tokentally: caught up ${accepted} opencode row(s)\n`);
+    process.stderr.write(`tokenmaxer: caught up ${accepted} opencode row(s)\n`);
 }
 
 async function piCatchup(cfg) {
@@ -869,14 +897,14 @@ async function piCatchup(cfg) {
     const rows = files.flatMap((f) => safeParse(f, 'pi'));
     const { accepted } = await postSessions(cfg, 'pi', rows);
     process.stderr.write(
-        `tokentally: caught up ${accepted} pi row(s) from ${files.length} file(s)\n`,
+        `tokenmaxer: caught up ${accepted} pi row(s) from ${files.length} file(s)\n`,
     );
 }
 
 async function reportOneOpencode(cfg, sessionArg) {
     const rows = reportOneOpencodeSession(sessionArg);
     const { accepted } = await postSessions(cfg, 'opencode', rows);
-    process.stderr.write(`tokentally: reported ${accepted} opencode row(s)\n`);
+    process.stderr.write(`tokenmaxer: reported ${accepted} opencode row(s)\n`);
 }
 
 // Unofficial dashboard endpoint — the only individual route to Cursor usage.
@@ -904,7 +932,7 @@ async function cursorFetchEvents(sessionToken, sinceMs) {
         );
         if (!res.ok) {
             process.stderr.write(
-                `tokentally: cursor usage fetch failed (${res.status})\n`,
+                `tokenmaxer: cursor usage fetch failed (${res.status})\n`,
             );
             return null;
         }
@@ -923,7 +951,7 @@ async function cursorSync(cfg, opts = {}) {
     const sessionToken = cursorSessionToken(cfg);
     if (!sessionToken) {
         process.stderr.write(
-            'tokentally: Cursor not configured (no state.vscdb token or cursorCookie)\n',
+            'tokenmaxer: Cursor not configured (no state.vscdb token or cursorCookie)\n',
         );
         return;
     }
@@ -939,14 +967,14 @@ async function cursorSync(cfg, opts = {}) {
     const events = await cursorFetchEvents(sessionToken, sinceMs);
     if (events === null) {
         process.stderr.write(
-            'tokentally: cursor sync aborted (fetch failed)\n',
+            'tokenmaxer: cursor sync aborted (fetch failed)\n',
         );
         return;
     }
     const rows = parseCursorEvents(events);
     const { accepted } = await postSessions(cfg, 'cursor', rows, opts.post);
     process.stderr.write(
-        `tokentally: cursor synced ${accepted} row(s) from ${events.length} event(s)\n`,
+        `tokenmaxer: cursor synced ${accepted} row(s) from ${events.length} event(s)\n`,
     );
 }
 
@@ -970,7 +998,7 @@ async function backfillFiles(cfg, source, rows, label, fileCount) {
         chunkSize: HISTORY_CHUNK,
     });
     process.stderr.write(
-        `tokentally: backfilled ${accepted} ${label} row(s) from ${fileCount} file(s)\n`,
+        `tokenmaxer: backfilled ${accepted} ${label} row(s) from ${fileCount} file(s)\n`,
     );
     return accepted;
 }
@@ -1005,7 +1033,7 @@ async function backfill(cfg, only) {
         });
         total += accepted;
         process.stderr.write(
-            `tokentally: backfilled ${accepted} opencode row(s)\n`,
+            `tokenmaxer: backfilled ${accepted} opencode row(s)\n`,
         );
     }
     if (!only || only === 'pi') {
@@ -1022,19 +1050,23 @@ async function backfill(cfg, only) {
         });
     }
     process.stderr.write(
-        `tokentally: backfill complete — ${total} row(s) total\n`,
+        `tokenmaxer: backfill complete — ${total} row(s) total\n`,
     );
 }
 
 async function reportOne(cfg, path, source) {
     const rows = parseFile(path, source);
     const { accepted } = await postSessions(cfg, source, rows);
-    process.stderr.write(`tokentally: reported ${accepted} row(s)\n`);
+    process.stderr.write(`tokenmaxer: reported ${accepted} row(s)\n`);
 }
 
 async function main() {
     const cmd = process.argv[2];
-    const cfg = cmd === 'set-profile-url' ? null : loadConfig();
+    if (cmd === 'set-profile-url') {
+        await runSetProfileUrl(process.argv.slice(3));
+        return;
+    }
+    const cfg = loadConfig();
     switch (cmd) {
         case 'claude-sessionend':
             await claudeSessionEnd(cfg);
@@ -1083,18 +1115,9 @@ async function main() {
             await backfill(cfg, only);
             break;
         }
-        case 'set-profile-url': {
-            try {
-                await setProfileUrl(loadConfig(), process.argv.slice(3));
-            } catch (err) {
-                process.stderr.write(`tokentally: ${err?.message ?? err}\n`);
-                process.exit(1);
-            }
-            break;
-        }
         default:
             process.stderr.write(
-                'usage: tokentally.mjs <claude-sessionend|claude-sessionstart|codex-sessionstart|opencode-sessionstart|pi-sessionstart|claude-report <path>|codex-report <path>|opencode-report <sessionID>|pi-report <path>|cursor-sync|backfill [claude|codex|opencode|pi|cursor]|set-profile-url (<https-url>|--clear)> [--dry-run]\n',
+                'usage: tokenmaxer <claude-sessionend|claude-sessionstart|codex-sessionstart|opencode-sessionstart|pi-sessionstart|claude-report <path>|codex-report <path>|opencode-report <sessionID>|pi-report <path>|cursor-sync|backfill [claude|codex|opencode|pi|cursor]|set-profile-url (<https-url>|--clear)> [--dry-run]\n',
             );
     }
 }
@@ -1106,7 +1129,7 @@ const invokedDirectly =
 if (invokedDirectly) {
     main().catch((err) => {
         // Never break the host session — hooks must exit cleanly.
-        process.stderr.write(`tokentally: ${err?.message ?? err}\n`);
+        process.stderr.write(`tokenmaxer: ${err?.message ?? err}\n`);
         process.exit(0);
     });
 }

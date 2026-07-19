@@ -41,9 +41,7 @@ declare module '*/tokentally.mjs' {
     export function parseSetProfileUrlArgs(
         argv: string[],
     ): { clear: true } | { clear: false; url: string };
-    export function buildProfileUrlBody(parsed: {
-        clear: true;
-    }): { url: null };
+    export function buildProfileUrlBody(parsed: { clear: true }): { url: null };
     export function buildProfileUrlBody(parsed: {
         clear: false;
         url: string;
@@ -65,6 +63,11 @@ declare module '*/tokentally.mjs' {
         parsed: ParsedTranscript,
         path?: string,
     ): ReporterRow[];
+    export function loadConfig(): {
+        apiBase: string;
+        token: string;
+        cursorCookie?: string;
+    };
 
     const content: string;
     export default content;

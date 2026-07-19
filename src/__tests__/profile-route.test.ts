@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { hashToken } from '@/lib/auth';
 import app from '@/index';
+import { hashToken } from '@/lib/auth';
 import type { Env } from '@/types';
 
 const TOKEN = 'tt_test_profile_token';
@@ -23,7 +23,11 @@ function kv(): KVNamespace {
         delete: async (key: string) => {
             store.delete(key);
         },
-        list: async () => ({ keys: [], list_complete: true, cacheStatus: null }),
+        list: async () => ({
+            keys: [],
+            list_complete: true,
+            cacheStatus: null,
+        }),
         getWithMetadata: async () => ({ value: null, metadata: null }),
     } as unknown as KVNamespace;
 }
