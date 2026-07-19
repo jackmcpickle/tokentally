@@ -65,7 +65,8 @@ export const Home: FC<HomeProps> = (p) => (
                 <span class="tld">.quest</span>
             </h1>
             <p class={`${sub} reveal reveal-delay`}>
-                The token leaderboard for Claude Code &amp; Codex. Ranked by{' '}
+                The token leaderboard for Claude Code, Codex, opencode &amp; pi.
+                Ranked by{' '}
                 <strong class="text-text">{METRIC_LABELS[p.metric]}</strong> ·{' '}
                 {WINDOW_LABELS[p.window]}.
             </p>
@@ -165,6 +166,18 @@ export const Home: FC<HomeProps> = (p) => (
                         selected={p.source === 'codex'}
                     >
                         Codex
+                    </option>
+                    <option
+                        value="opencode"
+                        selected={p.source === 'opencode'}
+                    >
+                        opencode
+                    </option>
+                    <option
+                        value="pi"
+                        selected={p.source === 'pi'}
+                    >
+                        pi
                     </option>
                 </Input>
             </label>
@@ -268,7 +281,7 @@ export const Home: FC<HomeProps> = (p) => (
                 </p>
                 <p class="text-[22px] leading-snug tracking-[-0.01px] sm:text-[24px]">
                     Claim a username and start reporting sessions from Claude
-                    Code or Codex.
+                    Code, Codex, opencode or pi.
                 </p>
             </div>
             <Button

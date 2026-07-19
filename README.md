@@ -1,27 +1,32 @@
 # TokenTally
 
-A public leaderboard of the tokens AI builders burn with **Claude Code** and **Codex**.
-Pick a username, paste two snippets, and your coding sessions self-report their token
-usage to the board. No email, no PII — just token counts.
+A public leaderboard of the tokens AI builders burn with **Claude Code**, **Codex**,
+**opencode** and **pi**. Pick a username, paste a couple of snippets, and your coding
+sessions self-report their token usage to the board. No email, no PII — just token
+counts.
 
 It's a single [Hono](https://hono.dev) worker on Cloudflare that serves both the JSON
 API and the server-rendered site, backed by one D1 database.
 
 ## How it works
 
-Neither Claude Code nor Codex hand token counts to hooks — they only pass a
-`transcript_path`. So the installed **reporter** (`reporter/tokentally.mjs`, a
-zero-dependency Node script) reads the local transcript the hook points it at, sums
-usage per model, and POSTs the totals — the same files [`ccusage`](https://ccusage.com)
-parses.
+These tools don't hand token counts to hooks — they only point at local session
+files. So the installed **reporter** (`reporter/tokentally.mjs`, a zero-dependency
+Node script) reads those files, sums usage per model, and POSTs the totals — the same
+files [`ccusage`](https://ccusage.com) parses.
 
 - **Claude Code** — `~/.claude/projects/**/<session>.jsonl` → `message.usage.*`
 - **Codex** — `~/.codex/sessions/**/rollout-*.jsonl` → last `token_count` event
+- **opencode** — `~/.local/share/opencode/storage/message/<session>/*.json` → `tokens.*`
+  on each assistant message
+- **pi** — `~/.pi/agent/sessions/**/*.jsonl` → `usage` on each assistant record
+  (deduped by `id`, since pi stores a branching tree)
 
-Reporting fires on **SessionStart** and **SessionEnd** hooks (no cron, no daemon).
-Every session is keyed by its id and the server **upserts** rather than adds, so
-re-reporting the same session never double-counts — which is what makes combining
-start + end (and Codex's start-only catch-up) safe.
+Reporting fires on Claude Code / Codex **SessionStart** / **SessionEnd** hooks (no cron,
+no daemon). opencode and pi have no shell hooks, so a small **shell wrapper function**
+runs the reporter each time they exit. Every session is keyed by its id and the server
+**upserts** rather than adds, so re-reporting the same session never double-counts —
+which is what makes combining start + end (and the start-only catch-ups) safe.
 
 Token counts are **self-reported** — this is an honor system with light guardrails
 (bearer auth, rate limits, sanity caps). See `/about`.
@@ -52,7 +57,7 @@ reporter/tokentally.mjs   # the copy-paste reporter (served at /tokentally.mjs)
 | GET    | `/api/u/:username`  | —      | profile totals + breakdown                          |
 | GET    | `/api/health`       | —      | `{name, version}`                                   |
 
-`window` ∈ `today|7d|30d|all`, `metric` ∈ `total|io|output|cost`, `source` ∈ `claude_code|codex`.
+`window` ∈ `today|7d|30d|all`, `metric` ∈ `total|io|output|cost`, `source` ∈ `claude_code|codex|opencode|pi`.
 
 ## Development
 
@@ -114,19 +119,34 @@ type = "command"
 command = "node ~/.tokentally/tokentally.mjs codex-sessionstart"
 ```
 
+**opencode** — opencode has no shell hooks, so add a wrapper to `~/.bashrc`/`~/.zshrc`
+that reports your latest sessions each time opencode exits:
+
+```sh
+opencode() { command opencode "$@"; node ~/.tokentally/tokentally.mjs opencode-sessionstart; }
+```
+
+**pi** — same idea for pi:
+
+```sh
+pi() { command pi "$@"; node ~/.tokentally/tokentally.mjs pi-sessionstart; }
+```
+
 The token lives only in `~/.tokentally/config.json`, never in shared settings files.
 
 ## Backfilling past history
 
 The hooks only report sessions going forward (`SessionStart` catch-up scans the last
 `TOKENTALLY_DAYS`, default 3). To load everything you ran _before_ installing TokenTally,
-run the one-time backfill — it scans **all** local Claude Code / Codex transcripts and
-uploads them:
+run the one-time backfill — it scans **all** local Claude Code / Codex / opencode / pi
+transcripts and uploads them:
 
 ```sh
-node ~/.tokentally/tokentally.mjs backfill          # both tools
-node ~/.tokentally/tokentally.mjs backfill claude   # Claude Code only
-node ~/.tokentally/tokentally.mjs backfill codex    # Codex only
+node ~/.tokentally/tokentally.mjs backfill            # all tools
+node ~/.tokentally/tokentally.mjs backfill claude     # Claude Code only
+node ~/.tokentally/tokentally.mjs backfill codex      # Codex only
+node ~/.tokentally/tokentally.mjs backfill opencode   # opencode only
+node ~/.tokentally/tokentally.mjs backfill pi         # pi only
 ```
 
 Backfill posts to a dedicated **`POST /api/history`** endpoint (Bearer auth) rather than

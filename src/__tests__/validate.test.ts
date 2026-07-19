@@ -53,6 +53,13 @@ describe('parseIngestBody', () => {
     it('rejects unknown source', () => {
         expect(parseIngestBody({ ...good, source: 'nope' }).ok).toBe(false);
     });
+    it('accepts all supported sources', () => {
+        for (const source of ['claude_code', 'codex', 'opencode', 'pi']) {
+            const r = parseIngestBody({ ...good, source });
+            expect(r.ok).toBe(true);
+            if (r.ok) expect(r.value.source).toBe(source);
+        }
+    });
     it('rejects empty sessions', () => {
         expect(parseIngestBody({ source: 'codex', sessions: [] }).ok).toBe(
             false,

@@ -35,7 +35,13 @@ function snippets(username, token) {
     '[[hooks.SessionStart.hooks]]\\n' +
     'type = "command"\\n' +
     'command = "node ~/.tokentally/tokentally.mjs codex-sessionstart"';
-  return { setup, claude, codex };
+  const opencode =
+    '# add to ~/.bashrc or ~/.zshrc\\n' +
+    'opencode() { command opencode "$@"; node ~/.tokentally/tokentally.mjs opencode-sessionstart; }';
+  const pi =
+    '# add to ~/.bashrc or ~/.zshrc\\n' +
+    'pi() { command pi "$@"; node ~/.tokentally/tokentally.mjs pi-sessionstart; }';
+  return { setup, claude, codex, opencode, pi };
 }
 
 form.addEventListener('submit', async (e) => {
@@ -58,6 +64,8 @@ form.addEventListener('submit', async (e) => {
     document.getElementById('r-setup').textContent = s.setup;
     document.getElementById('r-claude').textContent = s.claude;
     document.getElementById('r-codex').textContent = s.codex;
+    document.getElementById('r-opencode').textContent = s.opencode;
+    document.getElementById('r-pi').textContent = s.pi;
     document.getElementById('r-profile').href = '/u/' + data.username;
     result.classList.remove('hidden');
     form.classList.add('hidden');
@@ -135,8 +143,9 @@ export const Start: FC<{ base: string }> = ({ base }) => (
                     Setup tip
                 </p>
                 <p class="text-[22px] leading-snug tracking-[-0.01px]">
-                    After you claim, copy the hook config into Claude Code or
-                    Codex. Sessions report themselves from there.
+                    After you claim, copy the hook config into Claude Code,
+                    Codex, opencode or pi. Sessions report themselves from
+                    there.
                 </p>
             </aside>
         </div>
@@ -216,13 +225,50 @@ export const Start: FC<{ base: string }> = ({ base }) => (
                         </Button>
                     </div>
 
+                    <h2>2c. opencode hook</h2>
+                    <p class={muted}>
+                        opencode has no shell hooks, so add a wrapper function
+                        to your <code>~/.bashrc</code> or <code>~/.zshrc</code>.
+                        It reports your latest sessions each time opencode
+                        exits:
+                    </p>
+                    <div class={copyrow}>
+                        <pre id="r-opencode" />
+                        <Button
+                            variant="copy"
+                            data-target="r-opencode"
+                            type="button"
+                        >
+                            Copy
+                        </Button>
+                    </div>
+
+                    <h2>2d. pi hook</h2>
+                    <p class={muted}>
+                        Same idea for pi — add a wrapper function to your{' '}
+                        <code>~/.bashrc</code> or <code>~/.zshrc</code>:
+                    </p>
+                    <div class={copyrow}>
+                        <pre id="r-pi" />
+                        <Button
+                            variant="copy"
+                            data-target="r-pi"
+                            type="button"
+                        >
+                            Copy
+                        </Button>
+                    </div>
+
                     <h2>3. Backfill past history (optional)</h2>
                     <p class={muted}>
                         The hooks only report new sessions. To load everything
                         you ran before installing tokenmaxer.quest, run this
-                        once — it scans all your local Claude Code and Codex
-                        transcripts and uploads them (idempotent, so it&apos;s
-                        safe to re-run):
+                        once — it scans all your local Claude Code, Codex,
+                        opencode and pi transcripts and uploads them
+                        (idempotent, so it&apos;s safe to re-run). Add{' '}
+                        <code>claude</code>, <code>codex</code>,{' '}
+                        <code>opencode</code> or <code>pi</code> to limit it to
+                        one tool:
                     </p>
                     <div class={copyrow}>
                         <pre id="r-backfill">

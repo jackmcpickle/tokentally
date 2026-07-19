@@ -20,22 +20,22 @@ export const About: FC<{ base: string }> = ({ base }) => (
             <h2>What it tracks</h2>
             <p class="mb-6 text-muted">
                 For each coding session, tokenmaxer.quest stores only token
-                counts — input, output, cache read, cache write, and (for Codex)
-                reasoning tokens — broken down by model and by tool (Claude Code
-                or Codex). That&apos;s it. No prompts, no code, no file paths,
-                no email, no IP beyond transient rate-limiting. The leaderboard
-                can rank by total tokens, input+output, output only, or
-                estimated cost.
+                counts — input, output, cache read, cache write, and reasoning
+                tokens — broken down by model and by tool (Claude Code, Codex,
+                opencode or pi). That&apos;s it. No prompts, no code, no file
+                paths, no email, no IP beyond transient rate-limiting. The
+                leaderboard can rank by total tokens, input+output, output only,
+                or estimated cost.
             </p>
 
             <h2>Where the numbers come from</h2>
             <p class="mb-4 text-muted">
-                Claude Code and Codex both write a local transcript for every
-                session. The reporter reads those files — the same ones the
-                community tool <code>ccusage</code> parses — sums the usage per
+                Claude Code, Codex, opencode and pi each write local session
+                files. The reporter reads those files — the same ones community
+                tools like <code>ccusage</code> parse — sums the usage per
                 model, and posts the totals. Hook payloads themselves don&apos;t
-                contain token counts, so the reporter reads the transcript the
-                hook points it at:
+                contain token counts, so the reporter reads the session files
+                directly:
             </p>
             <ul class="mb-6 list-disc space-y-2 pl-5 text-muted">
                 <li>
@@ -47,6 +47,18 @@ export const About: FC<{ base: string }> = ({ base }) => (
                     <strong class="text-text">Codex:</strong>{' '}
                     <code>~/.codex/sessions/**/rollout-*.jsonl</code> — the last{' '}
                     <code>token_count</code> event per session.
+                </li>
+                <li>
+                    <strong class="text-text">opencode:</strong>{' '}
+                    <code>
+                        ~/.local/share/opencode/storage/message/&lt;session&gt;/*.json
+                    </code>{' '}
+                    — the <code>tokens</code> block on each assistant message.
+                </li>
+                <li>
+                    <strong class="text-text">pi:</strong>{' '}
+                    <code>~/.pi/agent/sessions/**/*.jsonl</code> — the{' '}
+                    <code>usage</code> on each assistant record (deduped by id).
                 </li>
             </ul>
             <p class="mb-6 text-muted">

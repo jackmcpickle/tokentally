@@ -29,6 +29,14 @@ declare module '*/tokentally.mjs' {
         text: string,
         opts?: { sessionId?: string; fallbackStartedAt?: number },
     ): ParsedTranscript;
+    export function parseOpencodeMessages(
+        messages: unknown[],
+        opts?: { sessionId?: string; fallbackStartedAt?: number },
+    ): ParsedTranscript;
+    export function parsePiRollout(
+        text: string,
+        opts?: { sessionId?: string; fallbackStartedAt?: number },
+    ): ParsedTranscript;
     export function sessionIdFromPath(path: string): string;
     export function toRows(
         parsed: ParsedTranscript,

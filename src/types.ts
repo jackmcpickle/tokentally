@@ -5,12 +5,19 @@ export interface Env {
     PUBLIC_BASE_URL: string;
 }
 
-export type Source = 'claude_code' | 'codex';
+export type Source = 'claude_code' | 'codex' | 'opencode' | 'pi';
 
-export const SOURCES: readonly Source[] = ['claude_code', 'codex'] as const;
+export const SOURCES: readonly Source[] = [
+    'claude_code',
+    'codex',
+    'opencode',
+    'pi',
+] as const;
 
 export function isSource(v: unknown): v is Source {
-    return v === 'claude_code' || v === 'codex';
+    return (
+        v === 'claude_code' || v === 'codex' || v === 'opencode' || v === 'pi'
+    );
 }
 
 /** A single row of cumulative usage for one (user, source, session, model). */

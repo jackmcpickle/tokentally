@@ -56,7 +56,7 @@ function Wordmark(props: {
 }
 
 const SITE_DESCRIPTION =
-    'tokenmaxer.quest — a public leaderboard of tokens burned by AI builders on Claude Code and Codex.';
+    'tokenmaxer.quest — a public leaderboard of tokens burned by AI builders on Claude Code, Codex, opencode and pi.';
 
 export const Layout: FC<{ title: string; base: string; children?: Child }> = (
     props,
@@ -231,7 +231,8 @@ export const Layout: FC<{ title: string; base: string; children?: Child }> = (
                             </a>
                             <p class="max-w-[36ch] leading-snug">
                                 Self-reported, honor-system token counts from
-                                Claude Code &amp; Codex. No prompts, no PII.
+                                Claude Code, Codex, opencode &amp; pi. No
+                                prompts, no PII.
                             </p>
                         </div>
                         <div class="flex flex-col gap-2.5">

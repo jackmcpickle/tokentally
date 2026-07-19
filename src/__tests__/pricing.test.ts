@@ -13,6 +13,15 @@ describe('priceFor', () => {
         expect(p.input).toBeGreaterThan(0);
         expect(p.output).toBeGreaterThan(0);
     });
+
+    it('prices open-weight models (opencode/pi) rather than falling back', () => {
+        // Provider-prefixed ids (as opencode/OpenRouter emit them) still match.
+        expect(priceFor('deepseek/deepseek-r1').output).toBe(2.19);
+        expect(priceFor('moonshotai/kimi-k2').output).toBe(2.2);
+        expect(priceFor('qwen/qwen3-coder').input).toBe(0.3);
+        expect(priceFor('z-ai/glm-4.6').output).toBe(2.2);
+        expect(priceFor('google/gemini-2.5-pro').output).toBe(10);
+    });
 });
 
 describe('estimateCost', () => {

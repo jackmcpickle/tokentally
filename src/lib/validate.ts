@@ -119,7 +119,10 @@ export function parseIngestBody(
     const b = body as Record<string, unknown>;
 
     if (!isSource(b.source)) {
-        return { ok: false, error: "source must be 'claude_code' or 'codex'" };
+        return {
+            ok: false,
+            error: "source must be 'claude_code', 'codex', 'opencode' or 'pi'",
+        };
     }
     if (!Array.isArray(b.sessions)) {
         return { ok: false, error: 'sessions must be an array' };

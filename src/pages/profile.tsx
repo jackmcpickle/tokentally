@@ -18,6 +18,8 @@ import {
 const SOURCE_LABELS: Record<string, string> = {
     claude_code: 'Claude Code',
     codex: 'Codex',
+    opencode: 'opencode',
+    pi: 'pi',
 };
 
 export const ProfilePage: FC<{ base: string; profile: Profile }> = ({
