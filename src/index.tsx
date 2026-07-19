@@ -5,6 +5,7 @@ import {
     getLeaderboard,
     getProfile,
 } from '@/lib/aggregate';
+import { inviteAllowed } from '@/lib/invite';
 import { About } from '@/pages/about';
 import { Home } from '@/pages/home';
 import { Layout } from '@/pages/layout';
@@ -117,7 +118,19 @@ app.get('/', async (c) => {
     );
 });
 
-app.get('/start', (c) => c.html(<Start base={baseUrl(c.env, c.req.url)} />));
+app.get('/start', async (c) => {
+    const provided = c.req.query('invite') ?? '';
+    const invited = await inviteAllowed(c.env.INVITE_KEY, provided);
+    // Only echo the key back when it validated (or gate is off) — never leak attempts.
+    const inviteKey = invited && c.env.INVITE_KEY ? provided : '';
+    return c.html(
+        <Start
+            base={baseUrl(c.env, c.req.url)}
+            invited={invited}
+            inviteKey={inviteKey}
+        />,
+    );
+});
 app.get('/about', (c) => c.html(<About base={baseUrl(c.env, c.req.url)} />));
 
 app.get('/u/:username', async (c) => {
