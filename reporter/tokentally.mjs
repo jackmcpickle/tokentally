@@ -660,6 +660,14 @@ const CODEX_ROLLOUT_FILE = /^rollout-.*\.jsonl$/iu;
 // are keyed by their stripped name minus any leading timestamp.
 let codexRolloutsById = null;
 
+function fileSize(path) {
+    try {
+        return statSync(path).size;
+    } catch {
+        return -1;
+    }
+}
+
 function addCodexRolloutToIndex(map, f) {
     const m = basename(f).match(
         /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl$/iu,
@@ -672,17 +680,13 @@ function addCodexRolloutToIndex(map, f) {
         )
     ).toLowerCase();
     const prev = map.get(key);
-    if (prev !== undefined) {
-        // Duplicate copies of one session (e.g. a stale copy left in
-        // archived_sessions): rollouts are append-only, so the larger file
-        // has the more complete history — matching against a truncated copy
-        // would let replayed events past the truncation point be counted.
-        try {
-            if (statSync(f).size <= statSync(prev).size) return;
-        } catch {
-            return;
-        }
-    }
+    // Duplicate copies of one session (e.g. a stale copy left in
+    // archived_sessions): rollouts are append-only, so the larger file has
+    // the more complete history — matching against a truncated copy would
+    // let replayed events past the truncation point be counted. A file that
+    // cannot be stat'ed scores -1, so an unreadable copy never displaces a
+    // readable one (and never gets pinned by a failure on the other side).
+    if (prev !== undefined && fileSize(f) <= fileSize(prev)) return;
     map.set(key, f);
 }
 
