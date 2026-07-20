@@ -1,6 +1,6 @@
 {
     "name": "tokentally",
-    "version": "0.2.0",
+    "version": "0.2.2",
     "private": true,
     "description": "Public token leaderboard for AI builders — a single Hono worker on Cloudflare + D1.",
     "type": "module",
@@ -21,7 +21,8 @@
         "fmt:check": "oxfmt --check .",
         "check": "pnpm lint && pnpm fmt:check && pnpm typecheck && pnpm test",
         "db:migrate:local": "wrangler d1 migrations apply tokentally --local",
-        "db:migrate": "wrangler d1 migrations apply tokentally --remote"
+        "db:migrate": "wrangler d1 migrations apply tokentally --remote",
+        "release": "commit-and-tag-version"
     },
     "dependencies": {
         "@cf-wasm/resvg": "0.3.5",
@@ -30,6 +31,7 @@
     "devDependencies": {
         "@cloudflare/workers-types": "^4.20250109.0",
         "@tailwindcss/cli": "^4.3.3",
+        "commit-and-tag-version": "^13.0.0",
         "oxfmt": "^0.59.0",
         "oxlint": "^1.74.0",
         "sharp": "^0.35.3",
@@ -41,5 +43,24 @@
     "engines": {
         "node": ">=24"
     },
-    "packageManager": "pnpm@11.13.1"
+    "packageManager": "pnpm@11.13.1",
+    "commit-and-tag-version": {
+        "bumpFiles": [
+            {
+                "filename": "package.json",
+                "type": "json"
+            },
+            {
+                "filename": "reporter/package.json",
+                "type": "json"
+            }
+        ],
+        "packageFiles": [
+            {
+                "filename": "package.json",
+                "type": "json"
+            }
+        ],
+        "releaseCommitMessageFormat": "chore(release): {{currentTag}} [skip ci]"
+    }
 }
