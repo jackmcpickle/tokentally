@@ -16,9 +16,11 @@ jobs:
       contents: write
       id-token: write
     steps:
+      # Deploy key (ruleset bypass) so the release commit/tag can push to main.
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          ssh-key: ${{ secrets.DEPLOY_KEY }}
 
       - uses: pnpm/action-setup@v4
 

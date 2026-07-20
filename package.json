@@ -1,6 +1,6 @@
 {
     "name": "tokentally",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "private": true,
     "description": "Public token leaderboard for AI builders — a single Hono worker on Cloudflare + D1.",
     "type": "module",

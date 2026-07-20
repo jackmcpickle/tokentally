@@ -1,6 +1,6 @@
 {
     "name": "tokenmaxer",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "description": "Reporter for tokenmaxer.quest — uploads per-session token counts (model names, session ids, timestamps; never prompts or code) from Claude Code, Codex, opencode, pi and Cursor.",
     "keywords": [
         "claude-code",

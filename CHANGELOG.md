@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## 0.2.3 (2026-07-20)
+
+### Bug Fixes
+
+- **ci:** publish reporter via npm trusted publishing (OIDC), drop NPM_TOKEN ([#17](https://github.com/jackmcpickle/tokenmaxer/issues/17))
+- **reporter:** normalize bin path so npm publish keeps the CLI ([#17](https://github.com/jackmcpickle/tokenmaxer/issues/17))
+
 ## 0.2.2 (2026-07-20)
 
 ### Features
