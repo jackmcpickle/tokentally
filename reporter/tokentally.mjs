@@ -29,7 +29,7 @@
 //   tokenmaxer backfill [claude|codex|opencode|pi|cursor] # one-time: upload ALL past history
 //   tokenmaxer set-profile-url <https-url>|--clear # set or clear public profile link
 
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -1123,9 +1123,18 @@ async function main() {
 }
 
 // Only run as a CLI when executed directly — importing (tests) must not trigger it.
-const invokedDirectly =
-    typeof process.argv[1] === 'string' &&
-    import.meta.url === pathToFileURL(process.argv[1]).href;
+// argv[1] may be a symlink (global/npx bin); resolve it so import.meta.url matches.
+function invokedDirectlyAs(argvPath) {
+    if (typeof argvPath !== 'string') return false;
+    let resolved = argvPath;
+    try {
+        resolved = realpathSync(argvPath);
+    } catch {
+        // fall back to the raw path
+    }
+    return import.meta.url === pathToFileURL(resolved).href;
+}
+const invokedDirectly = invokedDirectlyAs(process.argv[1]);
 if (invokedDirectly) {
     main().catch((err) => {
         // Never break the host session — hooks must exit cleanly.
