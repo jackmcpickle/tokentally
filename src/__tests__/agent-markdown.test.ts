@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+    AGENT_PAGE_VARY,
     INVITE_REQUIRED_MD,
     isBrowserRequest,
     markdownBody,
@@ -44,6 +45,20 @@ describe('isBrowserRequest', () => {
     it('is false for Accept: text/markdown', () => {
         expect(isBrowserRequest(req({ Accept: 'text/markdown' }))).toBe(false);
     });
+
+    it.each([
+        'Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)',
+        'Twitterbot/1.0',
+        'facebookexternalhit/1.1',
+        'Discordbot/2.0',
+        'LinkedInBot/1.0',
+        'WhatsApp/2.0',
+        'TelegramBot (like TwitterBot)',
+    ])('is true for link-preview crawler %s', (ua) => {
+        expect(
+            isBrowserRequest(req({ Accept: '*/*', 'User-Agent': ua })),
+        ).toBe(true);
+    });
 });
 
 describe('markdownBody / plainBody', () => {
@@ -52,7 +67,7 @@ describe('markdownBody / plainBody', () => {
         expect(res.headers.get('Content-Type')).toBe(
             'text/markdown; charset=utf-8',
         );
-        expect(res.headers.get('Vary')).toBe('Accept, Sec-Fetch-Mode');
+        expect(res.headers.get('Vary')).toBe(AGENT_PAGE_VARY);
         expect(res.headers.get('Link')).toContain('/llms.txt');
         expect(res.headers.get('X-Llms-Txt')).toBe('/llms.txt');
         expect(await res.text()).toBe('# Hi\n');

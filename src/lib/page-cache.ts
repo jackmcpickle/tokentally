@@ -1,5 +1,9 @@
-import type { MiddlewareHandler } from 'hono';
+import type { Context, MiddlewareHandler } from 'hono';
 import { cache } from 'hono/cache';
+import {
+    AGENT_PAGE_VARY_HEADERS,
+    isLinkPreviewBot,
+} from '@/lib/agent-markdown';
 import { READ_CACHE_TTL_SECONDS } from '@/lib/read-cache';
 
 const CACHE_CONTROL = `public, max-age=${READ_CACHE_TTL_SECONDS}`;
@@ -11,12 +15,16 @@ const CACHE_CONTROL = `public, max-age=${READ_CACHE_TTL_SECONDS}`;
 function createCacheMiddleware(options: {
     cacheName: string;
     vary?: string[];
+    keyGenerator?: (c: Context) => string | Promise<string>;
 }): MiddlewareHandler {
     const varyHeader = options.vary?.join(', ');
     const honoCache = cache({
         cacheName: options.cacheName,
         cacheControl: CACHE_CONTROL,
         ...(options.vary ? { vary: options.vary } : {}),
+        ...(options.keyGenerator
+            ? { keyGenerator: options.keyGenerator }
+            : {}),
         onCacheNotAvailable: false,
     });
 
@@ -34,9 +42,20 @@ function createCacheMiddleware(options: {
     };
 }
 
+/**
+ * Page HTML/Markdown negotiation also depends on link-preview bot UAs, but
+ * keying the Workers Cache on the full User-Agent would fragment every browser
+ * build. Bucket preview-bot vs not instead; Accept / Sec-Fetch-Mode stay in Vary.
+ */
 export const pageCache = createCacheMiddleware({
     cacheName: 'tokentally-pages',
-    vary: ['Accept', 'Sec-Fetch-Mode'],
+    vary: [...AGENT_PAGE_VARY_HEADERS],
+    keyGenerator: (c) => {
+        const preview = isLinkPreviewBot(c.req.header('user-agent') ?? '')
+            ? '1'
+            : '0';
+        return `${c.req.url}::preview=${preview}`;
+    },
 });
 
 export const apiCache = createCacheMiddleware({

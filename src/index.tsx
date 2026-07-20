@@ -1,7 +1,10 @@
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { isBrowserRequest } from '@/lib/agent-markdown';
+import {
+    AGENT_PAGE_VARY,
+    isBrowserRequest,
+} from '@/lib/agent-markdown';
 import { baseUrl } from '@/lib/base-url';
 import {
     cachedDistinctModelFamilies,
@@ -69,7 +72,7 @@ app.route('/', agentPageRoutes);
 function withAgentDiscoveryHeaders(c: Context<{ Bindings: Env }>): void {
     c.header('Link', '</llms.txt>; rel="describedby"');
     c.header('X-Llms-Txt', '/llms.txt');
-    c.header('Vary', 'Accept, Sec-Fetch-Mode');
+    c.header('Vary', AGENT_PAGE_VARY);
 }
 
 // Public API — token goes in the Authorization header (no cookies), so reflecting
