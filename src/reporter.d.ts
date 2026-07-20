@@ -16,6 +16,14 @@ declare module '*/tokentally.mjs' {
         started_at: number | null;
         models: Map<string, ReporterTotals>;
     }
+    export interface CodexPendingUsage {
+        model: string;
+        last: Record<string, unknown>;
+    }
+    export interface ParsedCodexRollout extends ParsedTranscript {
+        parent_id: string | null;
+        pending_inherited: CodexPendingUsage[];
+    }
     export interface ReporterRow extends ReporterTotals {
         session_id: string;
         model: string;
@@ -28,7 +36,15 @@ declare module '*/tokentally.mjs' {
     export function parseCodexRollout(
         text: string,
         opts?: { sessionId?: string; fallbackStartedAt?: number },
-    ): ParsedTranscript;
+    ): ParsedCodexRollout;
+    export function resolveCodexInherited(
+        parsed: ParsedCodexRollout,
+        parent?: string | string[] | null,
+    ): ParsedCodexRollout;
+    export function codexParentSequenceById(
+        parentId: string | null | undefined,
+        childPath?: string | null,
+    ): string[] | null;
     export function parseOpencodeMessages(
         messages: unknown[],
         opts?: { sessionId?: string; fallbackStartedAt?: number },
