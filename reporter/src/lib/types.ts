@@ -12,16 +12,6 @@ export interface ParsedTranscript {
     models: Map<string, ReporterTotals>;
 }
 
-export interface CodexPendingUsage {
-    model: string;
-    last: Record<string, unknown>;
-}
-
-export interface ParsedCodexRollout extends ParsedTranscript {
-    parent_id: string | null;
-    pending_inherited: CodexPendingUsage[];
-}
-
 export interface ReporterRow extends ReporterTotals {
     session_id: string;
     model: string;

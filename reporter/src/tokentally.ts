@@ -20,9 +20,9 @@ import { invokedDirectlyAs, main } from './cli';
 
 export { parseClaudeTranscript } from './agents/claude';
 export {
-    codexParentSequenceById,
+    codexForkResolverFor,
+    dedupeCodexRolloutFiles,
     parseCodexRollout,
-    resolveCodexInherited,
 } from './agents/codex';
 export { parseCursorEvents } from './agents/cursor';
 export { parseOpencodeMessages } from './agents/opencode';

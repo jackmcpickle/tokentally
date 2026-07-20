@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // The reporter is a plain .mjs module; import its exported pure functions.
 import {
-    codexParentSequenceById,
+    codexForkResolverFor,
+    dedupeCodexRolloutFiles,
     loadConfig,
     parseClaudeTranscript,
     parseCodexRollout,
@@ -12,7 +13,6 @@ import {
     parseCursorEvents,
     parsePiRollout,
     parseSetProfileUrlArgs,
-    resolveCodexInherited,
     buildProfileUrlBody,
     buildProfileUrlDryRun,
     sessionIdFromPath,
@@ -278,7 +278,6 @@ describe('parseCodexRollout', () => {
     it('does not treat root sessions as inheriting history', () => {
         const parsed = parseCodexRollout(CODEX);
         expect(parsed.parent_id).toBeNull();
-        expect(parsed.pending_inherited).toHaveLength(0);
     });
 });
 
@@ -286,369 +285,280 @@ function codexLine(type: string, payload: object, ts = '2026-07-18T09:00:00Z') {
     return JSON.stringify({ type, timestamp: ts, payload });
 }
 
-function tokenCount(
+function codexUsage(
     input: number,
     cached: number,
     output: number,
     reasoning = 0,
 ) {
-    return codexLine('event_msg', {
-        type: 'token_count',
-        info: {
-            last_token_usage: {
-                input_tokens: input,
-                cached_input_tokens: cached,
-                cache_write_input_tokens: 0,
-                output_tokens: output,
-                reasoning_output_tokens: reasoning,
-            },
-        },
-    });
+    return {
+        input_tokens: input,
+        cached_input_tokens: cached,
+        cache_write_input_tokens: 0,
+        output_tokens: output,
+        reasoning_output_tokens: reasoning,
+    };
 }
 
-const CHILD_META = codexLine('session_meta', {
-    id: 'child-1',
-    source: {
-        subagent: {
-            thread_spawn: { parent_thread_id: 'parent-1', depth: 1 },
-        },
-    },
-});
+// A token_count event in the real shape: cumulative total_token_usage plus
+// per-turn last_token_usage (either may be omitted for edge-case tests).
+function tc(
+    total: ReturnType<typeof codexUsage> | null,
+    last: ReturnType<typeof codexUsage> | null,
+    ts = '2026-07-18T09:00:10Z',
+) {
+    const info: Record<string, unknown> = {};
+    if (total) info.total_token_usage = total;
+    if (last) info.last_token_usage = last;
+    return codexLine('event_msg', { type: 'token_count', info }, ts);
+}
+
 const TURN_CONTEXT = codexLine('turn_context', { model: 'gpt-5-codex' });
 const TRIGGER_TURN = codexLine('inter_agent_communication_metadata', {
     trigger_turn: true,
 });
-const PARENT_ROLLOUT = [
-    codexLine('session_meta', { id: 'parent-1', model: 'gpt-5-codex' }),
-    tokenCount(100, 80, 10, 2),
-    tokenCount(200, 160, 20, 4),
-    tokenCount(300, 240, 30, 6),
-].join('\n');
+const SUBAGENT_META = codexLine('session_meta', {
+    id: 'child-1',
+    source: { subagent: { thread_spawn: { depth: 1 } } },
+});
+const EMBEDDED_PARENT_META = codexLine('session_meta', {
+    id: 'parent-1',
+    model: 'gpt-5-codex',
+});
 
-describe('parseCodexRollout thread-spawn children', () => {
-    it('drops inherited pre-boundary usage recorded before turn_context (unknown variant)', () => {
+describe('parseCodexRollout cumulative totals arbitration', () => {
+    it('suppresses an exact re-emission of a seen cumulative snapshot', () => {
         const parsed = parseCodexRollout(
             [
-                CHILD_META,
-                tokenCount(100, 80, 10, 2),
-                tokenCount(200, 160, 20, 4),
-                TURN_CONTEXT,
-                TRIGGER_TURN,
-                tokenCount(11, 0, 5, 1),
+                codexLine('session_meta', { id: 's1', model: 'gpt-5-codex' }),
+                tc(codexUsage(100, 0, 10), codexUsage(100, 0, 10)),
+                tc(codexUsage(100, 0, 10), codexUsage(100, 0, 10)),
             ].join('\n'),
         );
-        // Dropped replay leaves a zero-total row so a corrected re-report
-        // overwrites any inflated row the pre-fix reporter posted.
-        const unknown = parsed.models.get('unknown');
-        expect(unknown?.input_tokens).toBe(0);
-        expect(unknown?.output_tokens).toBe(0);
-        expect(unknown?.cache_read_tokens).toBe(0);
         const t = parsed.models.get('gpt-5-codex');
-        expect(t?.input_tokens).toBe(11);
-        expect(t?.output_tokens).toBe(5);
-        expect(parsed.pending_inherited).toHaveLength(0);
+        expect(t?.input_tokens).toBe(100);
+        expect(t?.output_tokens).toBe(10);
     });
 
-    it('emits zero rows for a fully inherited child so stale server rows get overwritten', () => {
+    it('prefers the totals-derived delta when a replayed last would inflate', () => {
         const parsed = parseCodexRollout(
             [
-                CHILD_META,
-                tokenCount(100, 80, 10, 2),
-                TURN_CONTEXT,
-                tokenCount(200, 160, 20, 4),
-                TRIGGER_TURN,
+                codexLine('session_meta', { id: 's1', model: 'gpt-5-codex' }),
+                tc(codexUsage(100, 0, 10), codexUsage(100, 0, 10)),
+                // last re-sent in full, but the counter only moved by 10/1
+                tc(codexUsage(110, 0, 11), codexUsage(100, 0, 10)),
             ].join('\n'),
         );
+        const t = parsed.models.get('gpt-5-codex');
+        expect(t?.input_tokens).toBe(110);
+        expect(t?.output_tokens).toBe(11);
+    });
+
+    it('never re-counts the gap when cumulative counters interleave', () => {
+        const parsed = parseCodexRollout(
+            [
+                codexLine('session_meta', { id: 's1', model: 'gpt-5-codex' }),
+                tc(codexUsage(100, 0, 10), null),
+                tc(codexUsage(50, 0, 5), null), // second lineage, latches
+                tc(codexUsage(200, 0, 20), null),
+                tc(codexUsage(80, 0, 8), null),
+            ].join('\n'),
+        );
+        // Post-latch containment: growth only above max(watermark, counted).
+        const t = parsed.models.get('gpt-5-codex');
+        expect(t?.input_tokens).toBe(200);
+        expect(t?.output_tokens).toBe(20);
+    });
+
+    it('caps a replayed last by containment after the latch', () => {
+        const parsed = parseCodexRollout(
+            [
+                codexLine('session_meta', { id: 's1', model: 'gpt-5-codex' }),
+                tc(codexUsage(100, 0, 10), codexUsage(100, 0, 10)),
+                // counter reset below the watermark: last alone must not
+                // add usage the contained totals deny
+                tc(codexUsage(20, 0, 2), codexUsage(20, 0, 2)),
+            ].join('\n'),
+        );
+        const t = parsed.models.get('gpt-5-codex');
+        expect(t?.input_tokens).toBe(100);
+        expect(t?.output_tokens).toBe(10);
+    });
+
+    it('keeps plain last-only accumulation for streams without totals', () => {
+        const parsed = parseCodexRollout(
+            [
+                codexLine('session_meta', { id: 's1', model: 'gpt-5-codex' }),
+                tc(null, codexUsage(100, 80, 10, 2)),
+                tc(null, codexUsage(200, 160, 20, 4)),
+            ].join('\n'),
+        );
+        const t = parsed.models.get('gpt-5-codex');
+        expect(t?.input_tokens).toBe(300);
+        expect(t?.cache_read_tokens).toBe(240);
+        expect(t?.reasoning_tokens).toBe(6);
+    });
+
+    it('ignores a replayed session_meta carrying a foreign id', () => {
+        const parsed = parseCodexRollout(
+            [
+                codexLine('session_meta', { id: 's1', model: 'gpt-5-codex' }),
+                tc(codexUsage(100, 0, 10), codexUsage(100, 0, 10)),
+                codexLine('session_meta', {
+                    id: 'other',
+                    source: { forked_from_id: 'grandparent-1' },
+                }),
+                tc(codexUsage(150, 0, 15), codexUsage(50, 0, 5)),
+            ].join('\n'),
+        );
+        expect(parsed.session_id).toBe('s1');
+        expect(parsed.parent_id).toBeNull();
+        expect(parsed.models.get('gpt-5-codex')?.input_tokens).toBe(150);
+    });
+});
+
+describe('parseCodexRollout subagent rollouts', () => {
+    it('drops the copied parent prefix and counts only the owned suffix', () => {
+        const parsed = parseCodexRollout(
+            [
+                SUBAGENT_META,
+                EMBEDDED_PARENT_META, // replayed ancestor meta: copied prefix
+                tc(codexUsage(100, 80, 10, 2), codexUsage(100, 80, 10, 2)),
+                TURN_CONTEXT,
+                TRIGGER_TURN, // owned-suffix boundary
+                tc(codexUsage(130, 80, 15, 2), codexUsage(30, 0, 5)),
+            ].join('\n'),
+        );
+        expect(parsed.parent_id).toBe('parent-1');
+        const t = parsed.models.get('gpt-5-codex');
+        expect(t?.input_tokens).toBe(30);
+        expect(t?.output_tokens).toBe(5);
+        // The dropped replay still pins a zero row for overwrite repair.
+        const replayModel = parsed.models.get('unknown');
+        expect(replayModel?.input_tokens).toBe(0);
+    });
+
+    it('handles an owned suffix whose counter restarts from zero', () => {
+        const parsed = parseCodexRollout(
+            [
+                SUBAGENT_META,
+                EMBEDDED_PARENT_META,
+                tc(codexUsage(100, 80, 10, 2), codexUsage(100, 80, 10, 2)),
+                TURN_CONTEXT,
+                TRIGGER_TURN,
+                // total == last below the boundary baseline: reset evidence
+                tc(codexUsage(30, 0, 5), codexUsage(30, 0, 5)),
+            ].join('\n'),
+        );
+        expect(parsed.models.get('gpt-5-codex')?.input_tokens).toBe(30);
+    });
+
+    it('emits only zero rows for a fully copied prefix without a boundary', () => {
+        const parsed = parseCodexRollout(
+            [
+                SUBAGENT_META,
+                EMBEDDED_PARENT_META,
+                TURN_CONTEXT,
+                tc(codexUsage(100, 80, 10, 2), codexUsage(100, 80, 10, 2)),
+                tc(codexUsage(200, 160, 20, 4), codexUsage(100, 80, 10, 2)),
+            ].join('\n'),
+            // Parent resolves with totals covering the whole replay.
+            {
+                resolveParent: () => ({
+                    resolved: usageTotals(200, 160, 20, 4),
+                }),
+            },
+        );
         const rows = toRows(parsed, '/x/rollout-child-1.jsonl');
-        expect(rows.map((r) => r.model).sort()).toEqual([
-            'gpt-5-codex',
-            'unknown',
-        ]);
         for (const row of rows) {
             expect(row.input_tokens).toBe(0);
             expect(row.output_tokens).toBe(0);
         }
+        expect(rows.length).toBeGreaterThan(0);
     });
 
-    it('drops inherited pre-boundary usage recorded after turn_context (named variant)', () => {
+    it('counts a genuinely independent subagent rollout in full', () => {
         const parsed = parseCodexRollout(
             [
-                CHILD_META,
+                SUBAGENT_META,
                 TURN_CONTEXT,
-                tokenCount(100, 80, 10, 2),
-                tokenCount(200, 160, 20, 4),
-                TRIGGER_TURN,
-                tokenCount(11, 0, 5, 1),
+                tc(codexUsage(40, 0, 4), codexUsage(40, 0, 4)),
+                tc(codexUsage(70, 0, 7), codexUsage(30, 0, 3)),
             ].join('\n'),
         );
-        const t = parsed.models.get('gpt-5-codex');
-        expect(t?.input_tokens).toBe(11);
-        expect(t?.cache_read_tokens).toBe(0);
-        expect(t?.reasoning_tokens).toBe(1);
-    });
-
-    it('accepts the boundary marker wrapped in an event_msg', () => {
-        const parsed = parseCodexRollout(
-            [
-                CHILD_META,
-                TURN_CONTEXT,
-                tokenCount(100, 80, 10, 2),
-                codexLine('event_msg', {
-                    type: 'inter_agent_communication_metadata',
-                    trigger_turn: true,
-                }),
-                tokenCount(11, 0, 5),
-            ].join('\n'),
-        );
-        expect(parsed.models.get('gpt-5-codex')?.input_tokens).toBe(11);
-    });
-
-    it('holds pending usage for legacy children without the marker', () => {
-        const parsed = parseCodexRollout(
-            [
-                CHILD_META,
-                TURN_CONTEXT,
-                tokenCount(100, 80, 10, 2),
-                tokenCount(200, 160, 20, 4),
-                tokenCount(11, 0, 5, 1),
-            ].join('\n'),
-        );
-        expect(parsed.parent_id).toBe('parent-1');
-        expect(parsed.models.size).toBe(0);
-        expect(parsed.pending_inherited).toHaveLength(3);
-    });
-
-    it('resolveCodexInherited strips the matched parent prefix', () => {
-        const parsed = parseCodexRollout(
-            [
-                CHILD_META,
-                TURN_CONTEXT,
-                tokenCount(100, 80, 10, 2),
-                tokenCount(200, 160, 20, 4),
-                tokenCount(11, 0, 5, 1),
-            ].join('\n'),
-        );
-        resolveCodexInherited(parsed, PARENT_ROLLOUT);
-        const t = parsed.models.get('gpt-5-codex');
-        expect(t?.input_tokens).toBe(11);
-        expect(t?.output_tokens).toBe(5);
-        expect(parsed.pending_inherited).toHaveLength(0);
-    });
-
-    it('ignores a later session_meta after the boundary (resume / replayed parent meta)', () => {
-        const parsed = parseCodexRollout(
-            [
-                CHILD_META,
-                TURN_CONTEXT,
-                tokenCount(100, 80, 10, 2),
-                TRIGGER_TURN,
-                codexLine('session_meta', {
-                    id: 'parent-1',
-                    source: {
-                        subagent: {
-                            thread_spawn: {
-                                parent_thread_id: 'grandparent-1',
-                                depth: 1,
-                            },
-                        },
-                    },
-                }),
-                tokenCount(11, 0, 5, 1),
-            ].join('\n'),
-        );
-        expect(parsed.parent_id).toBe('parent-1');
-        expect(parsed.pending_inherited).toHaveLength(0);
-        expect(parsed.models.get('gpt-5-codex')?.input_tokens).toBe(11);
-    });
-
-    it('does not let a trigger_turn marker wipe a forked session’s held usage', () => {
-        const parsed = parseCodexRollout(
-            [
-                codexLine('session_meta', {
-                    id: 'fork-1',
-                    source: { forked_from_id: 'parent-1' },
-                }),
-                TURN_CONTEXT,
-                tokenCount(100, 80, 10, 2),
-                tokenCount(200, 160, 20, 4),
-                TRIGGER_TURN,
-                tokenCount(11, 0, 5, 1),
-            ].join('\n'),
-        );
-        expect(parsed.models.size).toBe(0);
-        expect(parsed.pending_inherited).toHaveLength(3);
-        resolveCodexInherited(parsed, PARENT_ROLLOUT);
-        const t = parsed.models.get('gpt-5-codex');
-        expect(t?.input_tokens).toBe(11);
-        expect(t?.output_tokens).toBe(5);
-    });
-
-    it('resolveCodexInherited keeps a short run that matches the parent only mid-sequence', () => {
-        const parsed = parseCodexRollout(
-            [
-                CHILD_META,
-                TURN_CONTEXT,
-                tokenCount(200, 160, 20, 4),
-                tokenCount(300, 240, 30, 6),
-                tokenCount(11, 0, 5, 1),
-            ].join('\n'),
-        );
-        resolveCodexInherited(parsed, PARENT_ROLLOUT);
-        expect(parsed.models.get('gpt-5-codex')?.input_tokens).toBe(511);
-    });
-
-    it('resolveCodexInherited drops a strong interior match (parent is itself a subagent)', () => {
-        // Parent file starts with its own inherited replay (50...), so the
-        // child's replayed prefix only matches from the parent's second event.
-        const nestedParent = [
-            codexLine('session_meta', { id: 'parent-1', model: 'gpt-5-codex' }),
-            tokenCount(50, 0, 5, 1),
-            tokenCount(100, 80, 10, 2),
-            tokenCount(200, 160, 20, 4),
-            tokenCount(300, 240, 30, 6),
-        ].join('\n');
-        const parsed = parseCodexRollout(
-            [
-                CHILD_META,
-                TURN_CONTEXT,
-                tokenCount(100, 80, 10, 2),
-                tokenCount(200, 160, 20, 4),
-                tokenCount(300, 240, 30, 6),
-                tokenCount(11, 0, 5, 1),
-            ].join('\n'),
-        );
-        resolveCodexInherited(parsed, nestedParent);
-        expect(parsed.models.get('gpt-5-codex')?.input_tokens).toBe(11);
-    });
-
-    it('resolveCodexInherited emits zero rows when everything was inherited', () => {
-        const parsed = parseCodexRollout(
-            [
-                CHILD_META,
-                TURN_CONTEXT,
-                tokenCount(100, 80, 10, 2),
-                tokenCount(200, 160, 20, 4),
-            ].join('\n'),
-        );
-        resolveCodexInherited(parsed, PARENT_ROLLOUT);
-        const rows = toRows(parsed, '/x/rollout-child-1.jsonl');
-        expect(rows.map((r) => r.model)).toEqual(['gpt-5-codex']);
-        expect(rows[0]?.input_tokens).toBe(0);
-        expect(rows[0]?.output_tokens).toBe(0);
-    });
-
-    it('resolveCodexInherited keeps an anchored match of only non-distinctive tuples', () => {
-        // All-zero-input tuples repeat by coincidence (heartbeats, retries);
-        // an anchored run with no real input is not evidence of replay.
-        const zeroParent = [
-            codexLine('session_meta', { id: 'parent-1', model: 'gpt-5-codex' }),
-            tokenCount(0, 0, 5, 1),
-            tokenCount(0, 0, 5, 1),
-        ].join('\n');
-        const parsed = parseCodexRollout(
-            [
-                CHILD_META,
-                TURN_CONTEXT,
-                tokenCount(0, 0, 5, 1),
-                tokenCount(0, 0, 5, 1),
-            ].join('\n'),
-        );
-        resolveCodexInherited(parsed, zeroParent);
-        expect(parsed.models.get('gpt-5-codex')?.output_tokens).toBe(10);
-    });
-
-    it('resolveCodexInherited keeps a single-event match (may be coincidence)', () => {
-        const parsed = parseCodexRollout(
-            [
-                CHILD_META,
-                TURN_CONTEXT,
-                tokenCount(100, 80, 10, 2),
-                tokenCount(11, 0, 5, 1),
-            ].join('\n'),
-        );
-        resolveCodexInherited(parsed, PARENT_ROLLOUT);
-        expect(parsed.models.get('gpt-5-codex')?.input_tokens).toBe(111);
-    });
-
-    it('resolveCodexInherited counts everything when the parent is missing', () => {
-        const parsed = parseCodexRollout(
-            [
-                CHILD_META,
-                TURN_CONTEXT,
-                tokenCount(100, 80, 10, 2),
-                tokenCount(11, 0, 5, 1),
-            ].join('\n'),
-        );
-        resolveCodexInherited(parsed, null);
-        expect(parsed.models.get('gpt-5-codex')?.input_tokens).toBe(111);
-    });
-
-    it('resolveCodexInherited drops a replayed prefix containing an adjacent duplicated row', () => {
-        // Replay occasionally writes a token_count row twice back-to-back
-        // even though the parent's own file has it once; the duplicate is
-        // still replayed history and must be dropped with the rest.
-        const parsed = parseCodexRollout(
-            [
-                CHILD_META,
-                TURN_CONTEXT,
-                tokenCount(100, 80, 10, 2),
-                tokenCount(100, 80, 10, 2),
-                tokenCount(200, 160, 20, 4),
-                tokenCount(11, 0, 5, 1),
-            ].join('\n'),
-        );
-        resolveCodexInherited(parsed, PARENT_ROLLOUT);
-        const t = parsed.models.get('gpt-5-codex');
-        expect(t?.input_tokens).toBe(11);
-        expect(t?.output_tokens).toBe(5);
-        expect(parsed.pending_inherited).toHaveLength(0);
-    });
-
-    it('resolveCodexInherited keeps a duplicated row backed by only one real parent match', () => {
-        // The duplicate tolerance must not lower the evidence bar: a genuine
-        // parent match plus its own adjacent duplicate is still a
-        // single-event match and may be coincidence, so nothing is dropped.
-        const parsed = parseCodexRollout(
-            [
-                CHILD_META,
-                TURN_CONTEXT,
-                tokenCount(100, 80, 10, 2),
-                tokenCount(100, 80, 10, 2),
-                tokenCount(11, 0, 5, 1),
-            ].join('\n'),
-        );
-        resolveCodexInherited(parsed, PARENT_ROLLOUT);
-        expect(parsed.models.get('gpt-5-codex')?.input_tokens).toBe(211);
-    });
-
-    it('resolveCodexInherited drops a duplicated row inside an interior match', () => {
-        // Parent starts with its own inherited replay, so the child's prefix
-        // matches only from the parent's second event; the duplicate
-        // tolerance applies on the interior path too.
-        const nestedParent = [
-            codexLine('session_meta', { id: 'parent-1', model: 'gpt-5-codex' }),
-            tokenCount(50, 0, 5, 1),
-            tokenCount(100, 80, 10, 2),
-            tokenCount(200, 160, 20, 4),
-            tokenCount(300, 240, 30, 6),
-        ].join('\n');
-        const parsed = parseCodexRollout(
-            [
-                CHILD_META,
-                TURN_CONTEXT,
-                tokenCount(100, 80, 10, 2),
-                tokenCount(100, 80, 10, 2),
-                tokenCount(200, 160, 20, 4),
-                tokenCount(300, 240, 30, 6),
-                tokenCount(11, 0, 5, 1),
-            ].join('\n'),
-        );
-        resolveCodexInherited(parsed, nestedParent);
-        expect(parsed.models.get('gpt-5-codex')?.input_tokens).toBe(11);
+        expect(parsed.models.get('gpt-5-codex')?.input_tokens).toBe(70);
+        expect(parsed.models.get('gpt-5-codex')?.output_tokens).toBe(7);
     });
 });
 
-describe('codexParentSequenceById', () => {
+describe('parseCodexRollout forks', () => {
+    const FORK_META = codexLine(
+        'session_meta',
+        { id: 'fork-1', forked_from_id: 'parent-1' },
+        '2026-07-18T09:00:00Z',
+    );
+
+    it('subtracts a resolved parent baseline from inherited totals', () => {
+        const parsed = parseCodexRollout(
+            [
+                FORK_META,
+                TURN_CONTEXT,
+                // Child's cumulative counter continues from the parent's 70/7.
+                tc(codexUsage(100, 0, 10), codexUsage(30, 0, 3)),
+                tc(codexUsage(120, 0, 12), codexUsage(20, 0, 2)),
+            ].join('\n'),
+            { resolveParent: () => ({ resolved: usageTotals(70, 0, 7) }) },
+        );
+        const t = parsed.models.get('gpt-5-codex');
+        expect(t?.input_tokens).toBe(50);
+        expect(t?.output_tokens).toBe(5);
+    });
+
+    it('falls to conservative accounting when the parent is unresolved', () => {
+        const parsed = parseCodexRollout(
+            [
+                FORK_META,
+                TURN_CONTEXT,
+                // First totals row may be wholly inherited: skipped.
+                tc(codexUsage(70, 0, 7), codexUsage(70, 0, 7)),
+                tc(codexUsage(100, 0, 10), codexUsage(30, 0, 3)),
+            ].join('\n'),
+            { resolveParent: () => ({ unresolved: true }) },
+        );
+        const t = parsed.models.get('gpt-5-codex');
+        expect(t?.input_tokens).toBe(30);
+        expect(t?.output_tokens).toBe(3);
+    });
+
+    it('counts a fork fully when no resolver is available', () => {
+        const parsed = parseCodexRollout(
+            [
+                FORK_META,
+                TURN_CONTEXT,
+                tc(codexUsage(100, 0, 10), codexUsage(100, 0, 10)),
+                tc(codexUsage(130, 0, 13), codexUsage(30, 0, 3)),
+            ].join('\n'),
+        );
+        expect(parsed.models.get('gpt-5-codex')?.input_tokens).toBe(130);
+    });
+});
+
+function usageTotals(
+    input: number,
+    cacheRead: number,
+    output: number,
+    reasoning = 0,
+) {
+    return {
+        input_tokens: input,
+        output_tokens: output,
+        cache_read_tokens: cacheRead,
+        cache_creation_tokens: 0,
+        reasoning_tokens: reasoning,
+    };
+}
+
+describe('codex fork resolver and rollout dedup', () => {
     let dir: string;
 
     beforeEach(() => {
@@ -659,35 +569,103 @@ describe('codexParentSequenceById', () => {
         rmSync(dir, { recursive: true, force: true });
     });
 
-    it('prefers the larger duplicate rollout in the near-dir probe', () => {
-        const uuid = '0f9a41f2-1111-4222-8333-abcdefabcdef';
-        // Stale truncated copy of the same session sits beside the complete
-        // one and sorts first in the directory listing; the near-dir probe
-        // must apply the same larger-file-wins rule as the full index.
+    // Distinct parent uuids per test: the resolver memoizes parent snapshot
+    // streams for the process lifetime, so tests must not share a parent id.
+    function writeParent(uuid: string, name: string, events: string[]) {
+        const path = join(dir, name);
         writeFileSync(
-            join(dir, `rollout-2026-07-18T08-00-00-${uuid}.jsonl`),
+            path,
             [
                 codexLine('session_meta', { id: uuid, model: 'gpt-5-codex' }),
-                tokenCount(100, 80, 10, 2),
+                ...events,
             ].join('\n'),
         );
-        writeFileSync(
-            join(dir, `rollout-2026-07-18T09-00-00-${uuid}.jsonl`),
-            [
-                codexLine('session_meta', { id: uuid, model: 'gpt-5-codex' }),
-                tokenCount(100, 80, 10, 2),
-                tokenCount(200, 160, 20, 4),
-                tokenCount(300, 240, 30, 6),
-            ].join('\n'),
-        );
+        return path;
+    }
+
+    it('returns the parent totals at or before the fork timestamp', () => {
+        const uuid = '0f9a41f2-1111-4222-8333-abcdefabcd01';
+        writeParent(uuid, `rollout-2026-07-18T09-00-00-${uuid}.jsonl`, [
+            tc(codexUsage(100, 0, 10), null, '2026-07-18T09:00:10Z'),
+            tc(codexUsage(200, 0, 20), null, '2026-07-18T09:00:20Z'),
+            tc(codexUsage(300, 0, 30), null, '2026-07-18T09:00:30Z'),
+        ]);
         const childPath = join(
             dir,
             'rollout-2026-07-18T09-05-00-1e9a41f2-1111-4222-8333-abcdefabcdef.jsonl',
         );
-        writeFileSync(childPath, CHILD_META);
-        const keys = codexParentSequenceById(uuid, childPath);
-        expect(keys).toHaveLength(3);
-        expect(keys?.[2]).toBe('300|240|0|30|6');
+        writeFileSync(childPath, SUBAGENT_META);
+        const resolve = codexForkResolverFor(childPath);
+        const baseline = resolve(uuid, '2026-07-18T09:00:25Z');
+        expect('resolved' in baseline && baseline.resolved?.input_tokens).toBe(
+            200,
+        );
+    });
+
+    it('prefers the larger duplicate rollout in the near-dir probe', () => {
+        // Stale truncated copy of the same session sits beside the complete
+        // one and sorts first in the directory listing; the near-dir probe
+        // must apply the same larger-file-wins rule as the full index.
+        const uuid = '0f9a41f2-1111-4222-8333-abcdefabcd02';
+        writeParent(uuid, `rollout-2026-07-18T08-00-00-${uuid}.jsonl`, [
+            tc(codexUsage(100, 0, 10), null, '2026-07-18T09:00:10Z'),
+        ]);
+        writeParent(uuid, `rollout-2026-07-18T09-00-00-${uuid}.jsonl`, [
+            tc(codexUsage(100, 0, 10), null, '2026-07-18T09:00:10Z'),
+            tc(codexUsage(200, 0, 20), null, '2026-07-18T09:00:20Z'),
+            tc(codexUsage(300, 0, 30), null, '2026-07-18T09:00:30Z'),
+        ]);
+        const childPath = join(
+            dir,
+            'rollout-2026-07-18T09-05-00-1e9a41f2-1111-4222-8333-abcdefabcdef.jsonl',
+        );
+        writeFileSync(childPath, SUBAGENT_META);
+        const resolve = codexForkResolverFor(childPath);
+        const baseline = resolve(uuid, '2026-07-18T09:59:00Z');
+        expect('resolved' in baseline && baseline.resolved?.input_tokens).toBe(
+            300,
+        );
+    });
+
+    it('treats a self-referential parent as unresolved', () => {
+        const uuid = '0f9a41f2-1111-4222-8333-abcdefabcd03';
+        const path = join(dir, `rollout-2026-07-18T09-00-00-${uuid}.jsonl`);
+        writeFileSync(
+            path,
+            codexLine('session_meta', {
+                id: uuid,
+                forked_from_id: uuid,
+            }),
+        );
+        const resolve = codexForkResolverFor(path);
+        const baseline = resolve(uuid, '2026-07-18T09:00:25Z');
+        expect('unresolved' in baseline).toBe(true);
+    });
+
+    it('dedupes duplicate copies of one session, keeping the largest', () => {
+        const uuid = '0f9a41f2-1111-4222-8333-abcdefabcd04';
+        const small = writeParent(
+            uuid,
+            `rollout-2026-07-18T08-00-00-${uuid}.jsonl`,
+            [tc(codexUsage(100, 0, 10), null)],
+        );
+        const large = writeParent(
+            uuid,
+            `rollout-2026-07-18T09-00-00-${uuid}.jsonl`,
+            [
+                tc(codexUsage(100, 0, 10), null),
+                tc(codexUsage(200, 0, 20), null),
+            ],
+        );
+        const other = writeParent(
+            '9e9a41f2-1111-4222-8333-abcdefabcd04',
+            'rollout-2026-07-18T09-00-00-9e9a41f2-1111-4222-8333-abcdefabcd04.jsonl',
+            [tc(codexUsage(10, 0, 1), null)],
+        );
+        expect(dedupeCodexRolloutFiles([small, large, other])).toEqual([
+            large,
+            other,
+        ]);
     });
 });
 

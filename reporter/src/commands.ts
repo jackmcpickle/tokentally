@@ -7,6 +7,7 @@ import {
 import {
     CODEX_ROLLOUT_FILE,
     codexDirs,
+    dedupeCodexRolloutFiles,
     seedCodexRolloutIndex,
 } from './agents/codex';
 import {
@@ -114,12 +115,26 @@ export async function claudeCatchup(cfg: ReporterConfig): Promise<void> {
 }
 
 export async function codexCatchup(cfg: ReporterConfig): Promise<void> {
-    await catchupJsonlSource(
-        cfg,
-        'codex',
-        codexDirs(),
-        (n) => CODEX_ROLLOUT_FILE.test(n),
-        '',
+    const since = Date.now() - CATCHUP_DAYS * 86_400_000;
+    // Dedupe copies of one session across sessions/ and archived_sessions/
+    // before parsing — the server upsert replaces, so a stale copy's row
+    // must never race the fuller one.
+    const files = dedupeCodexRolloutFiles(
+        codexDirs().flatMap((d) =>
+            walkJsonl(d, since, (n) => CODEX_ROLLOUT_FILE.test(n)),
+        ),
+    );
+    const rows: ReporterRow[] = [];
+    for (const file of files) {
+        try {
+            rows.push(...parseFile(file, 'codex'));
+        } catch {
+            /* skip unreadable / unparseable file */
+        }
+    }
+    const { accepted } = await postSessions(cfg, 'codex', rows);
+    process.stderr.write(
+        `tokenmaxer: caught up ${accepted} row(s) from ${files.length} file(s)\n`,
     );
 }
 
@@ -220,8 +235,10 @@ export async function backfill(
         );
     }
     if (!only || only === 'codex') {
-        const files = codexDirs().flatMap((d) =>
-            walkJsonl(d, 0, (n) => CODEX_ROLLOUT_FILE.test(n)),
+        const files = dedupeCodexRolloutFiles(
+            codexDirs().flatMap((d) =>
+                walkJsonl(d, 0, (n) => CODEX_ROLLOUT_FILE.test(n)),
+            ),
         );
         // Seed before parse: parent lookups for subagent/fork children
         // reuse this walk instead of paying for a second one.

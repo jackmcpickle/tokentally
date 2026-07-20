@@ -16,14 +16,16 @@ declare module '*/tokentally.mjs' {
         started_at: number | null;
         models: Map<string, ReporterTotals>;
     }
-    export interface CodexPendingUsage {
-        model: string;
-        last: Record<string, unknown>;
-    }
     export interface ParsedCodexRollout extends ParsedTranscript {
         parent_id: string | null;
-        pending_inherited: CodexPendingUsage[];
     }
+    export type CodexForkBaseline =
+        | { resolved: ReporterTotals | null }
+        | { unresolved: true };
+    export type CodexForkResolver = (
+        parentSessionId: string,
+        forkedAt: string,
+    ) => CodexForkBaseline;
     export interface ReporterRow extends ReporterTotals {
         session_id: string;
         model: string;
@@ -35,16 +37,16 @@ declare module '*/tokentally.mjs' {
     ): ParsedTranscript;
     export function parseCodexRollout(
         text: string,
-        opts?: { sessionId?: string; fallbackStartedAt?: number },
+        opts?: {
+            sessionId?: string;
+            fallbackStartedAt?: number;
+            resolveParent?: CodexForkResolver;
+        },
     ): ParsedCodexRollout;
-    export function resolveCodexInherited(
-        parsed: ParsedCodexRollout,
-        parent?: string | string[] | null,
-    ): ParsedCodexRollout;
-    export function codexParentSequenceById(
-        parentId: string | null | undefined,
-        childPath?: string | null,
-    ): string[] | null;
+    export function codexForkResolverFor(
+        childPath: string | null,
+    ): CodexForkResolver;
+    export function dedupeCodexRolloutFiles(files: string[]): string[];
     export function parseOpencodeMessages(
         messages: unknown[],
         opts?: { sessionId?: string; fallbackStartedAt?: number },

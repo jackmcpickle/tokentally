@@ -221,6 +221,16 @@ export default defineConfig({
             },
         },
         {
+            // Faithful port of CodexBar's rollout counting state machine
+            // (which carries the equivalent swiftlint complexity disables);
+            // decomposing it would break line-for-line reviewability against
+            // the reference implementation.
+            files: ['reporter/src/agents/codex-engine.ts'],
+            rules: {
+                complexity: 'off',
+            },
+        },
+        {
             // Constant-time digest comparison requires XOR-accumulate.
             files: ['src/lib/invite.ts'],
             rules: {
