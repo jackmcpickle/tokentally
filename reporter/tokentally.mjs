@@ -31,7 +31,7 @@
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, dirname, join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { pathToFileURL } from 'node:url';
 
@@ -737,16 +737,20 @@ const codexSequencesById = new Map();
 function codexParentSequenceById(parentId, childPath) {
     if (typeof parentId !== 'string' || !parentId) return null;
     const id = parentId.toLowerCase();
-    const cached = codexSequencesById.get(id);
-    if (cached) return cached;
     const path = codexRolloutPathById(
         id,
         childPath ? dirname(childPath) : null,
     );
+    if (!path) return null;
     // A parent that resolves to the child's own file (self-referential or
     // colliding metadata) must not be matched against — the child's whole
-    // sequence would match itself and every token would be dropped.
-    if (!path || path === childPath) return null;
+    // sequence would match itself and every token would be dropped. This
+    // check must run before the cache (a hit for a legitimate earlier child
+    // must not bypass it) and on resolve()d paths (the index and the
+    // same-dir probe produce normalized paths; the hook may not).
+    if (childPath && resolve(path) === resolve(childPath)) return null;
+    const cached = codexSequencesById.get(id);
+    if (cached) return cached;
     let keys;
     try {
         keys = codexTokenSequence(readFileSync(path, 'utf8'));
