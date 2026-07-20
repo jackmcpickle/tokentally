@@ -43,11 +43,11 @@ jobs:
           version="$(node -p "require('./package.json').version")"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
 
+      # Trusted publishing (OIDC) — no npm token; provenance is implied.
+      # Requires the Trusted Publisher config on npmjs.com for this repo/workflow.
       - name: Publish reporter to npm
         working-directory: reporter
-        run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
 
       - name: Push release commit and tag
         run: git push --follow-tags origin HEAD:main
