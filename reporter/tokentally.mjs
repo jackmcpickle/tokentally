@@ -31,7 +31,7 @@
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { pathToFileURL } from 'node:url';
 
@@ -698,8 +698,26 @@ function seedCodexRolloutIndex(files) {
     for (const f of files) addCodexRolloutToIndex(codexRolloutsById, f);
 }
 
-function codexRolloutPathById(id) {
+function codexRolloutPathById(id, nearDir) {
     if (typeof id !== 'string' || !id) return null;
+    const lower = id.toLowerCase();
+    // Session-end hooks handle a single file; a parent usually sits in the
+    // same dated directory as its child, so probe there before paying a
+    // full recursive walk of every session directory for one lookup.
+    if (codexRolloutsById === null && nearDir) {
+        try {
+            for (const n of readdirSync(nearDir)) {
+                if (
+                    CODEX_ROLLOUT_FILE.test(n) &&
+                    n.toLowerCase().includes(lower)
+                ) {
+                    return join(nearDir, n);
+                }
+            }
+        } catch {
+            /* fall through to the full index */
+        }
+    }
     if (codexRolloutsById === null) {
         seedCodexRolloutIndex(
             codexDirs().flatMap((d) =>
@@ -707,7 +725,7 @@ function codexRolloutPathById(id) {
             ),
         );
     }
-    return codexRolloutsById.get(id.toLowerCase()) ?? null;
+    return codexRolloutsById.get(lower) ?? null;
 }
 
 // Parent token sequences by session id, memoized so a parent that spawned
@@ -716,13 +734,19 @@ function codexRolloutPathById(id) {
 // transient error on one child does not leave every later sibling resolving
 // against nothing.
 const codexSequencesById = new Map();
-function codexParentSequenceById(parentId) {
+function codexParentSequenceById(parentId, childPath) {
     if (typeof parentId !== 'string' || !parentId) return null;
     const id = parentId.toLowerCase();
     const cached = codexSequencesById.get(id);
     if (cached) return cached;
-    const path = codexRolloutPathById(id);
-    if (!path) return null;
+    const path = codexRolloutPathById(
+        id,
+        childPath ? dirname(childPath) : null,
+    );
+    // A parent that resolves to the child's own file (self-referential or
+    // colliding metadata) must not be matched against — the child's whole
+    // sequence would match itself and every token would be dropped.
+    if (!path || path === childPath) return null;
     let keys;
     try {
         keys = codexTokenSequence(readFileSync(path, 'utf8'));
@@ -1050,9 +1074,18 @@ function parseFile(path, source) {
     if (source === 'codex') {
         parsed = parseCodexRollout(text, { fallbackStartedAt });
         if (parsed.pending_inherited.length > 0) {
+            // A session naming itself as parent is bogus metadata — treat
+            // as parent-not-found (count everything) rather than matching
+            // the child against its own history.
+            const selfParent =
+                typeof parsed.session_id === 'string' &&
+                parsed.parent_id?.toLowerCase() ===
+                    parsed.session_id.toLowerCase();
             resolveCodexInherited(
                 parsed,
-                codexParentSequenceById(parsed.parent_id),
+                selfParent
+                    ? null
+                    : codexParentSequenceById(parsed.parent_id, path),
             );
         }
     } else if (source === 'pi')
