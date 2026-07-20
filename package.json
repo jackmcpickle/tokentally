@@ -19,7 +19,7 @@
         "lint": "oxlint",
         "fmt": "oxfmt .",
         "fmt:check": "oxfmt --check .",
-        "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test",
+        "check": "pnpm lint && pnpm fmt:check && pnpm typecheck && pnpm test",
         "db:migrate:local": "wrangler d1 migrations apply tokentally --local",
         "db:migrate": "wrangler d1 migrations apply tokentally --remote"
     },
