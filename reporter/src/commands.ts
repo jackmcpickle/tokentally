@@ -1,5 +1,9 @@
-import { readFileSync } from 'node:fs';
-import { claudeDirs, parseClaudeTranscript } from './agents/claude';
+import {
+    claudeEmbeddedSessionId,
+    claudeSessionIdFromPath,
+    claudeSessionSiblings,
+    collectClaudeSessionRows,
+} from './agents/claude-sessions';
 import {
     CODEX_ROLLOUT_FILE,
     codexDirs,
@@ -19,7 +23,6 @@ import { postSessions, readStdin } from './api';
 import { collectRowsFromJsonlDirs } from './lib/collect';
 import { CATCHUP_DAYS, HISTORY_CHUNK } from './lib/flags';
 import { walkJsonl } from './lib/fs-walk';
-import { toRows } from './lib/rows';
 import type {
     JsonObject,
     PostOpts,
@@ -67,25 +70,46 @@ export async function claudeSessionEnd(cfg: ReporterConfig): Promise<void> {
     const path = hook.transcript_path;
     // fall back to a scan when no transcript path is provided
     if (typeof path !== 'string' || !path) return claudeCatchup(cfg);
-    const text = readFileSync(path, 'utf8');
-    const parsed = parseClaudeTranscript(text, {
-        sessionId:
-            typeof hook.session_id === 'string' ? hook.session_id : undefined,
-    });
-    const rows = toRows(parsed, path);
+    const hookSid =
+        typeof hook.session_id === 'string' && hook.session_id
+            ? hook.session_id
+            : undefined;
+    // Run the whole-session collector seeded with the hooked transcript's
+    // sibling files (which may live outside the walked corpus). Rows key on
+    // embedded session ids — the hook id only fills in when a transcript
+    // declares none — so every uploaded row is a complete session total,
+    // never a partial that the server's replace-upsert would use to erase a
+    // fuller row. A listing failure inside the hooked session's own tree
+    // withholds the hooked session for the same reason.
+    const failedSiblingDirs: string[] = [];
+    const siblings = claudeSessionSiblings(path, failedSiblingDirs);
+    const extraFailedSids: string[] = [];
+    if (failedSiblingDirs.length > 0) {
+        extraFailedSids.push(
+            claudeEmbeddedSessionId(path) ??
+                hookSid ??
+                claudeSessionIdFromPath(path),
+        );
+    }
+    const since = Date.now() - CATCHUP_DAYS * 86_400_000;
+    const { rows, sessionCount } = collectClaudeSessionRows(
+        since,
+        siblings,
+        hookSid,
+        extraFailedSids,
+    );
     const { accepted } = await postSessions(cfg, 'claude_code', rows);
     process.stderr.write(
-        `tokenmaxer: reported ${accepted} row(s) for the current session\n`,
+        `tokenmaxer: reported ${accepted} row(s) across ${sessionCount} session(s)\n`,
     );
 }
 
 export async function claudeCatchup(cfg: ReporterConfig): Promise<void> {
-    await catchupJsonlSource(
-        cfg,
-        'claude_code',
-        claudeDirs(),
-        (n) => n.endsWith('.jsonl'),
-        '',
+    const since = Date.now() - CATCHUP_DAYS * 86_400_000;
+    const { rows, fileCount, sessionCount } = collectClaudeSessionRows(since);
+    const { accepted } = await postSessions(cfg, 'claude_code', rows);
+    process.stderr.write(
+        `tokenmaxer: caught up ${accepted} row(s) across ${sessionCount} session(s) from ${fileCount} file(s)\n`,
     );
 }
 
@@ -186,18 +210,13 @@ export async function backfill(
 ): Promise<void> {
     let total = 0;
     if (!only || only === 'claude') {
-        const { files, rows } = collectRowsFromJsonlDirs({
-            dirs: claudeDirs(),
-            sinceMs: 0,
-            match: (n) => n.endsWith('.jsonl'),
-            parseFile: (path) => parseFile(path, 'claude_code'),
-        });
+        const { rows, fileCount } = collectClaudeSessionRows(0);
         total += await backfillFiles(
             cfg,
             'claude_code',
             rows,
             'Claude Code',
-            files.length,
+            fileCount,
         );
     }
     if (!only || only === 'codex') {

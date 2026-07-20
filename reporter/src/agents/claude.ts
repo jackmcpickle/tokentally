@@ -18,7 +18,7 @@ export function claudeDirs(): string[] {
     ];
 }
 
-interface ClaudeUsageRow {
+export interface ClaudeUsageRow {
     key: string | null;
     model: string;
     usage: ReporterTotals;
@@ -42,12 +42,45 @@ function claudeUsageRow(obj: JsonObject): ClaudeUsageRow | null {
     };
 }
 
-function sumClaudeRows(rows: ClaudeUsageRow[]): Map<string, ReporterTotals> {
+export function sumClaudeRows(
+    rows: ClaudeUsageRow[],
+): Map<string, ReporterTotals> {
     const models = new Map<string, ReporterTotals>();
     for (const { model, usage } of rows) {
         accumulateModelUsage(models, model, usage);
     }
     return models;
+}
+
+export interface ClaudeFileScan {
+    sessionId: string | null;
+    startedAt: number | null;
+    keyed: Map<string, ClaudeUsageRow>;
+    unkeyed: ClaudeUsageRow[];
+}
+
+/**
+ * Scan one transcript's text: first embedded session id, first timestamp, and
+ * its usage rows split into keyed (deduped last-wins on message/request id)
+ * and unkeyed. Session aggregation merges these across a session's files.
+ */
+export function scanClaudeTranscript(text: string): ClaudeFileScan {
+    let sessionId: string | null = null;
+    let startedAt: number | null = null;
+    const keyed = new Map<string, ClaudeUsageRow>();
+    const unkeyed: ClaudeUsageRow[] = [];
+
+    for (const obj of jsonlObjects(text)) {
+        if (startedAt === null) startedAt = toMs(obj.timestamp);
+        if (!sessionId && typeof obj.sessionId === 'string' && obj.sessionId)
+            sessionId = obj.sessionId;
+        const row = claudeUsageRow(obj);
+        if (!row) continue;
+        if (row.key === null) unkeyed.push(row);
+        else keyed.set(row.key, row);
+    }
+
+    return { sessionId, startedAt, keyed, unkeyed };
 }
 
 /**
@@ -63,24 +96,10 @@ export function parseClaudeTranscript(
     text: string,
     opts: ParseOpts = {},
 ): ParsedTranscript {
-    let sessionId = opts.sessionId ?? null;
-    let startedAt: number | null = null;
-    const keyed = new Map<string, ClaudeUsageRow>();
-    const unkeyed: ClaudeUsageRow[] = [];
-
-    for (const obj of jsonlObjects(text)) {
-        if (startedAt === null) startedAt = toMs(obj.timestamp);
-        if (!sessionId && typeof obj.sessionId === 'string')
-            sessionId = obj.sessionId;
-        const row = claudeUsageRow(obj);
-        if (!row) continue;
-        if (row.key === null) unkeyed.push(row);
-        else keyed.set(row.key, row);
-    }
-
+    const scan = scanClaudeTranscript(text);
     return {
-        session_id: sessionId ?? opts.sessionId ?? null,
-        started_at: startedAt ?? opts.fallbackStartedAt ?? null,
-        models: sumClaudeRows([...keyed.values(), ...unkeyed]),
+        session_id: opts.sessionId || scan.sessionId || null,
+        started_at: scan.startedAt ?? opts.fallbackStartedAt ?? null,
+        models: sumClaudeRows([...scan.keyed.values(), ...scan.unkeyed]),
     };
 }

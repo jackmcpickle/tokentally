@@ -203,6 +203,7 @@ export default defineConfig({
                 'src/__tests__/reporter-rows.test.ts',
                 'src/__tests__/reporter-collect.test.ts',
                 'src/__tests__/reporter-bundle.test.ts',
+                'src/__tests__/reporter-claude-sessions.test.ts',
             ],
             rules: {
                 'import/no-relative-parent-imports': 'off',

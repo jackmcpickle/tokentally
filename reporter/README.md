@@ -50,6 +50,18 @@ tokenmaxer set-profile-url --clear [--dry-run]
 Reporting is idempotent (upsert keyed by session id) — re-running never
 double-counts. Source: <https://github.com/jackmcpickle/tokenmaxer>.
 
+## Claude subagent sessions
+
+Claude Code splits one session across a root `<sessionId>.jsonl` and subagent
+transcripts under `<sessionId>/subagents/` (nesting deeper for workflow
+subagents), all sharing the same session id. The reporter aggregates a
+session's files into a single row per model — deduplicating streamed message
+chunks across copies — before uploading, so the files can't overwrite each
+other's totals on the server, and it never uploads a session's row unless
+every known contribution was readable. Because the aggregated rows keep the
+same session ids, upgrading and re-running `tokenmaxer backfill claude`
+repairs any previously collided history in place.
+
 ## Codex subagent sessions
 
 Codex subagent/fork children replay part of the parent rollout's history
