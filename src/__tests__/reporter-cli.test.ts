@@ -352,11 +352,13 @@ describe('tokenmaxer CLI', () => {
         input?: number;
         output?: number;
         ts?: string;
+        sidechain?: boolean;
     }): string {
         return JSON.stringify({
             type: 'assistant',
             timestamp: opts.ts ?? '2026-07-18T10:02:00Z',
             ...(opts.sid ? { sessionId: opts.sid } : {}),
+            ...(opts.sidechain ? { isSidechain: true } : {}),
             message: {
                 ...(opts.messageId ? { id: opts.messageId } : {}),
                 model: 'claude-opus-4-8-20260101',
@@ -367,6 +369,56 @@ describe('tokenmaxer CLI', () => {
             },
         });
     }
+
+    it('backfill exits non-zero and reports errors when ingest fails', () => {
+        // Unroutable address: every batch fails, so the summary must say so
+        // and the process must not report success. Runs without --dry-run.
+        writeConfig({ apiBase: 'http://127.0.0.1:9', token: 'tt_test' });
+        writeTranscript('.claude/projects/demo/sess-err.jsonl', CLAUDE);
+        const res = runCli(['backfill', 'claude'], { home });
+        expect(res.status).toBe(1);
+        expect(res.stderr).toContain('ingest failed');
+        expect(res.stderr).toContain('backfill finished with errors');
+        expect(res.stderr).not.toContain('backfill complete');
+    });
+
+    it('claude cross-file copies resolve by winner rule, not file order', () => {
+        writeConfig();
+        // The parent transcript carries a stale non-sidechain copy of the
+        // same message chunk; the subagent file's sidechain row must win
+        // regardless of which file the walk visits first.
+        writeTranscript(
+            '.claude/projects/demo/sess-win.jsonl',
+            [
+                claudeUsage({
+                    sid: 'sess-win',
+                    messageId: 'msg_w',
+                    input: 999,
+                    output: 999,
+                }),
+            ].join('\n'),
+        );
+        writeTranscript(
+            '.claude/projects/demo/sess-win/subagents/agent-a.jsonl',
+            claudeUsage({
+                sid: 'sess-win',
+                messageId: 'msg_w',
+                input: 40,
+                output: 4,
+                sidechain: true,
+            }),
+        );
+        const res = runCli(['claude-sessionstart', '--dry-run'], { home });
+        expect(res.status).toBe(0);
+        const payload = JSON.parse(res.stdout.trim());
+        expect(payload.body.sessions).toEqual([
+            expect.objectContaining({
+                session_id: 'sess-win',
+                input_tokens: 40,
+                output_tokens: 4,
+            }),
+        ]);
+    });
 
     it('claude-sessionstart merges subagent transcripts into one row', () => {
         writeConfig();

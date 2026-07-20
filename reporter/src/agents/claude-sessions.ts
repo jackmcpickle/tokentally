@@ -407,10 +407,17 @@ function claudeSessionGroups(): {
 
 // ----------------------------------------------------------- aggregation ----
 
+// One keyed row plus where it came from, for cross-file reconciliation.
+interface KeyedClaudeRow {
+    row: ClaudeUsageRow;
+    subagentPath: boolean;
+    path: string;
+}
+
 interface SessionState {
     sid: string;
     startedAt: number | null;
-    keyed: Map<string, ClaudeUsageRow>;
+    keyed: Map<string, KeyedClaudeRow>;
     unkeyed: ClaudeUsageRow[];
 }
 
@@ -419,13 +426,25 @@ interface ReadStats {
     missingPaths: string[];
 }
 
+// CodexBar's cross-file winner rule for one message/request key appearing in
+// several of a session's files: a sidechain row beats a non-sidechain one,
+// then a row from a subagents/ transcript beats the parent's copy, then the
+// lexicographically smaller path wins — deterministic regardless of file
+// iteration order.
+function claudeRowWins(a: KeyedClaudeRow, b: KeyedClaudeRow): boolean {
+    if (a.row.sidechain !== b.row.sidechain) return a.row.sidechain;
+    if (a.subagentPath !== b.subagentPath) return a.subagentPath;
+    return a.path < b.path;
+}
+
 /**
  * Read and aggregate a set of transcript files into per-session state, keyed
  * by lowercased session id (first-seen casing preserved for the row). Rows
- * sharing a message/request key dedupe last-wins ACROSS a session's files —
- * a copied transcript's chunks collapse against the original's. Files are
- * read one at a time; a file that cannot be read is recorded in stats
- * (missing vs failed split so the caller can decide what each means).
+ * sharing a message/request key dedupe last-wins WITHIN a file (streamed
+ * chunks) and by CodexBar's deterministic winner rule ACROSS a session's
+ * files — a copied transcript's chunks collapse against the original's.
+ * Files are read one at a time; a file that cannot be read is recorded in
+ * stats (missing vs failed split so the caller can decide what each means).
  */
 function aggregateClaudeFiles(
     files: WalkedFile[],
@@ -457,7 +476,14 @@ function aggregateClaudeFiles(
             state = { sid, startedAt: null, keyed: new Map(), unkeyed: [] };
             sessions.set(stateKey, state);
         }
-        for (const [k, row] of scan.keyed) state.keyed.set(k, row);
+        const subagentPath = file.path.toLowerCase().includes('/subagents/');
+        for (const [k, row] of scan.keyed) {
+            const candidate = { row, subagentPath, path: file.path };
+            const incumbent = state.keyed.get(k);
+            if (!incumbent || claudeRowWins(candidate, incumbent)) {
+                state.keyed.set(k, candidate);
+            }
+        }
         state.unkeyed.push(...scan.unkeyed);
         const fileStart =
             scan.startedAt ??
@@ -478,7 +504,10 @@ function sessionRows(sessions: Map<string, SessionState>): ReporterRow[] {
             ...toRows({
                 session_id: s.sid,
                 started_at: s.startedAt,
-                models: sumClaudeRows([...s.keyed.values(), ...s.unkeyed]),
+                models: sumClaudeRows([
+                    ...[...s.keyed.values()].map((k) => k.row),
+                    ...s.unkeyed,
+                ]),
             }),
         );
     }

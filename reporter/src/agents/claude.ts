@@ -22,6 +22,9 @@ export interface ClaudeUsageRow {
     key: string | null;
     model: string;
     usage: ReporterTotals;
+    // Sidechain copies carry the authoritative usage when the same message
+    // chunk appears in several of a session's files (CodexBar's winner rule).
+    sidechain: boolean;
 }
 
 // One assistant transcript line's usage, or null when it carries none.
@@ -39,6 +42,7 @@ function claudeUsageRow(obj: JsonObject): ClaudeUsageRow | null {
         model:
             typeof msg.model === 'string' && msg.model ? msg.model : 'unknown',
         usage: usageFromFields(usage, CLAUDE_USAGE_FIELDS),
+        sidechain: obj.isSidechain === true,
     };
 }
 

@@ -171,13 +171,13 @@ export async function reportOneOpencode(
 export async function cursorSync(
     cfg: ReporterConfig,
     opts: CursorSyncOpts = {},
-): Promise<void> {
+): Promise<number> {
     const sessionToken = cursorSessionToken(cfg);
     if (!sessionToken) {
         process.stderr.write(
             'tokenmaxer: Cursor not configured (no state.vscdb token or cursorCookie)\n',
         );
-        return;
+        return 0;
     }
     const since = opts.sinceMs ?? Date.now() - CATCHUP_DAYS * 86_400_000;
     // Floor to UTC day start: rows are whole-day sums and the server upsert
@@ -193,13 +193,14 @@ export async function cursorSync(
         process.stderr.write(
             'tokenmaxer: cursor sync aborted (fetch failed)\n',
         );
-        return;
+        return 1;
     }
     const rows = parseCursorEvents(events);
-    const { accepted } = await postSessions(cfg, 'cursor', rows, opts.post);
+    const result = await postSessions(cfg, 'cursor', rows, opts.post);
     process.stderr.write(
-        `tokenmaxer: cursor synced ${accepted} row(s) from ${events.length} event(s)\n`,
+        `tokenmaxer: cursor synced ${result.accepted} row(s) from ${events.length} event(s)\n`,
     );
+    return result.rejected + result.failed;
 }
 
 async function backfillFiles(
@@ -208,15 +209,18 @@ async function backfillFiles(
     rows: ReporterRow[],
     label: string,
     fileCount: number,
-): Promise<number> {
-    const { accepted } = await postSessions(cfg, source, rows, {
+): Promise<{ accepted: number; problems: number }> {
+    const result = await postSessions(cfg, source, rows, {
         path: '/api/history',
         chunkSize: HISTORY_CHUNK,
     });
     process.stderr.write(
-        `tokenmaxer: backfilled ${accepted} ${label} row(s) from ${fileCount} file(s)\n`,
+        `tokenmaxer: backfilled ${result.accepted} ${label} row(s) from ${fileCount} file(s)\n`,
     );
-    return accepted;
+    return {
+        accepted: result.accepted,
+        problems: result.rejected + result.failed,
+    };
 }
 
 export async function backfill(
@@ -224,15 +228,18 @@ export async function backfill(
     only: string | undefined,
 ): Promise<void> {
     let total = 0;
+    let problems = 0;
     if (!only || only === 'claude') {
         const { rows, fileCount } = collectClaudeSessionRows(0);
-        total += await backfillFiles(
+        const r = await backfillFiles(
             cfg,
             'claude_code',
             rows,
             'Claude Code',
             fileCount,
         );
+        total += r.accepted;
+        problems += r.problems;
     }
     if (!only || only === 'codex') {
         const files = dedupeCodexRolloutFiles(
@@ -250,17 +257,26 @@ export async function backfill(
                 return [];
             }
         });
-        total += await backfillFiles(cfg, 'codex', rows, 'Codex', files.length);
+        const r = await backfillFiles(
+            cfg,
+            'codex',
+            rows,
+            'Codex',
+            files.length,
+        );
+        total += r.accepted;
+        problems += r.problems;
     }
     if (!only || only === 'opencode') {
         const rows = collectOpencodeRows(0);
-        const { accepted } = await postSessions(cfg, 'opencode', rows, {
+        const result = await postSessions(cfg, 'opencode', rows, {
             path: '/api/history',
             chunkSize: HISTORY_CHUNK,
         });
-        total += accepted;
+        total += result.accepted;
+        problems += result.rejected + result.failed;
         process.stderr.write(
-            `tokenmaxer: backfilled ${accepted} opencode row(s)\n`,
+            `tokenmaxer: backfilled ${result.accepted} opencode row(s)\n`,
         );
     }
     if (!only || only === 'pi') {
@@ -270,13 +286,24 @@ export async function backfill(
             match: (n) => n.endsWith('.jsonl'),
             parseFile: (path) => parseFile(path, 'pi'),
         });
-        total += await backfillFiles(cfg, 'pi', rows, 'pi', files.length);
+        const r = await backfillFiles(cfg, 'pi', rows, 'pi', files.length);
+        total += r.accepted;
+        problems += r.problems;
     }
     if (!only || only === 'cursor') {
-        await cursorSync(cfg, {
+        problems += await cursorSync(cfg, {
             sinceMs: Date.now() - 90 * 86_400_000,
             post: { path: '/api/history', chunkSize: HISTORY_CHUNK },
         });
+    }
+    if (problems > 0) {
+        // A partial upload must not masquerade as success: report what was
+        // lost and exit non-zero so scripts and humans notice.
+        process.stderr.write(
+            `tokenmaxer: backfill finished with errors — ${total} row(s) stored, ${problems} row(s) rejected or failed\n`,
+        );
+        process.exitCode = 1;
+        return;
     }
     process.stderr.write(
         `tokenmaxer: backfill complete — ${total} row(s) total\n`,
