@@ -33,6 +33,11 @@
         "README.md"
     ],
     "type": "module",
+    "scripts": {
+        "build": "esbuild src/tokentally.ts --bundle --platform=node --format=esm --target=node24 --outfile=tokentally.mjs && chmod +x tokentally.mjs",
+        "typecheck": "tsc -p tsconfig.json",
+        "prepublishOnly": "pnpm run build"
+    },
     "engines": {
         "node": ">=24"
     }

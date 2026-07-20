@@ -30,6 +30,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Typecheck and build reporter
+        run: |
+          set -euo pipefail
+          pnpm typecheck
+          pnpm build:reporter
+
       - name: Configure git identity
         run: |
           git config user.name "github-actions[bot]"
@@ -45,6 +51,7 @@ jobs:
 
       # Trusted publishing (OIDC) — no npm token; provenance is implied.
       # Requires the Trusted Publisher config on npmjs.com for this repo/workflow.
+      # prepublishOnly recompiles tokentally.mjs from TypeScript before packing.
       - name: Publish reporter to npm
         working-directory: reporter
         run: npm publish --access public

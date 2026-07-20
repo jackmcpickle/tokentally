@@ -6,6 +6,7 @@ dist/
 .DS_Store
 coverage/
 src/styles/app.css
+reporter/tokentally.mjs
 
 .worktrees/
 .superpowers/

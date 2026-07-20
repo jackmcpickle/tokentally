@@ -199,11 +199,24 @@ export default defineConfig({
                 'src/__tests__/reporter.test.ts',
                 'src/__tests__/reporter-privacy.test.ts',
                 'src/__tests__/reporter-cli.test.ts',
+                'src/__tests__/reporter-shared.test.ts',
+                'src/__tests__/reporter-rows.test.ts',
+                'src/__tests__/reporter-collect.test.ts',
+                'src/__tests__/reporter-bundle.test.ts',
             ],
             rules: {
                 'import/no-relative-parent-imports': 'off',
                 // ?raw default export is provided by vite, invisible to the linter.
                 'import/default': 'off',
+            },
+        },
+        {
+            // Reporter is a multi-module package bundled to one file; agents
+            // intentionally import shared helpers from ../lib.
+            files: ['reporter/src/**'],
+            rules: {
+                'import/no-relative-parent-imports': 'off',
+                'import/no-unassigned-import': 'off',
             },
         },
         {

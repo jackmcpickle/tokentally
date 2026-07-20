@@ -20,3 +20,9 @@ jobs:
         run: pnpm exec oxlint
       - name: oxfmt
         run: pnpm exec oxfmt --check .
+      - name: typecheck
+        run: pnpm typecheck
+      - name: build
+        run: pnpm build
+      - name: test
+        run: pnpm test

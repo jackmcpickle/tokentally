@@ -6,15 +6,15 @@ import source from '../../reporter/tokentally.mjs?raw';
 
 describe('reporter privacy guarantees', () => {
     it('only fetches the configured apiBase and cursor.com', () => {
-        const urls = [...source.matchAll(/fetch\(\s*([^,]+),/gu)].map((m) =>
-            (m[1] ?? '').trim(),
+        const urls = [...source.matchAll(/fetch\(\s*([\s\S]*?)\s*,/gu)].map(
+            (m) => (m[1] ?? '').replace(/\s+/gu, ' ').trim(),
         );
         expect(urls.length).toBeGreaterThan(0);
         for (const url of urls) {
-            expect(
-                url.startsWith('`${cfg.apiBase}') ||
-                    url.startsWith("'https://cursor.com/"),
-            ).toBe(true);
+            const ok =
+                url.includes('${cfg.apiBase}') ||
+                /['"]https:\/\/cursor\.com\//u.test(url);
+            expect(ok).toBe(true);
         }
     });
 
@@ -30,7 +30,7 @@ describe('reporter privacy guarantees', () => {
     });
 
     it('supports --dry-run on every command', () => {
-        expect(source).toContain("process.argv.includes('--dry-run')");
+        expect(source).toMatch(/process\.argv\.includes\(['"]--dry-run['"]\)/u);
         expect(source).toContain('dryRun: true');
     });
 });
