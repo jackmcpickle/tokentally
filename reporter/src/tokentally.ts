@@ -24,7 +24,7 @@ export {
     dedupeCodexRolloutFiles,
     parseCodexRollout,
 } from './agents/codex';
-export { parseCursorEvents } from './agents/cursor';
+export { cursorFetchEvents, parseCursorEvents } from './agents/cursor';
 export { parseOpencodeMessages } from './agents/opencode';
 export { parsePiRollout } from './agents/pi';
 export { loadConfig } from './config';

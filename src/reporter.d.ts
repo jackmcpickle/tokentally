@@ -56,6 +56,10 @@ declare module '*/tokentally.mjs' {
         opts?: { sessionId?: string; fallbackStartedAt?: number },
     ): ParsedTranscript;
     export function parseCursorEvents(events: unknown[]): ReporterRow[];
+    export function cursorFetchEvents(
+        sessionToken: string,
+        sinceMs: number,
+    ): Promise<unknown[] | null>;
     export function parseSetProfileUrlArgs(
         argv: string[],
     ): { clear: true } | { clear: false; url: string };

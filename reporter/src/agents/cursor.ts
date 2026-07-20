@@ -11,6 +11,26 @@ import type {
 } from '../lib/types';
 import { CURSOR_USAGE_FIELDS } from '../lib/usage-fields';
 
+// Cursor serializes some token counts as strings; coerce the known fields to
+// numbers before the shared field mapping.
+function cursorUsage(raw: JsonObject): ReporterTotals {
+    const coerced: JsonObject = {};
+    for (const field of Object.values(CURSOR_USAGE_FIELDS)) {
+        const v = raw[field];
+        coerced[field] = typeof v === 'string' && v.trim() ? Number(v) : v;
+    }
+    return usageFromFields(coerced, CURSOR_USAGE_FIELDS);
+}
+
+function hasTokens(t: ReporterTotals): boolean {
+    return (
+        t.input_tokens > 0 ||
+        t.output_tokens > 0 ||
+        t.cache_read_tokens > 0 ||
+        t.cache_creation_tokens > 0
+    );
+}
+
 /**
  * Bucket Cursor dashboard usage events by UTC day + model into session rows.
  * One synthetic session per day ("cursor-YYYY-MM-DD"); re-summing a whole day
@@ -24,17 +44,15 @@ export function parseCursorEvents(events: unknown[]): ReporterRow[] {
         const e = raw as JsonObject;
         const ms = Number(e.timestamp);
         if (!Number.isFinite(ms) || ms <= 0) continue;
-        const u = asObject(e.tokenUsage);
         if (!e.tokenUsage || typeof e.tokenUsage !== 'object') continue;
+        // Zero-usage events (aborted/errored requests) carry no tokens.
+        const usage = cursorUsage(asObject(e.tokenUsage));
+        if (!hasTokens(usage)) continue;
         const day = new Date(ms).toISOString().slice(0, 10);
         const model =
             typeof e.model === 'string' && e.model ? e.model : 'unknown';
         const byModel = days.get(day) ?? new Map<string, ReporterTotals>();
-        accumulateModelUsage(
-            byModel,
-            model,
-            usageFromFields(u, CURSOR_USAGE_FIELDS),
-        );
+        accumulateModelUsage(byModel, model, usage);
         days.set(day, byModel);
     }
     const rows: ReporterRow[] = [];
@@ -139,12 +157,21 @@ export function cursorSessionToken(cfg: ReporterConfig): string | null {
         : null;
 }
 
+// The response reports how many events match the query; pagination trusts it
+// over per-page counts because the API can return short non-final pages.
+function cursorTotalCount(payload: JsonObject): number | null {
+    const v = payload.totalUsageEventsCount;
+    const n = typeof v === 'number' || typeof v === 'string' ? Number(v) : NaN;
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
+}
+
 // Unofficial dashboard endpoint — the only individual route to Cursor usage.
 export async function cursorFetchEvents(
     sessionToken: string,
     sinceMs: number,
 ): Promise<unknown[] | null> {
     const events: unknown[] = [];
+    let expectedTotal: number | null = null;
     for (let page = 1; page <= 200; page += 1) {
         // eslint-disable-next-line no-await-in-loop -- pagination is inherently sequential
         const res = await fetch(
@@ -175,10 +202,12 @@ export async function cursorFetchEvents(
         const data: unknown = await res.json().catch(() => null);
         if (data === null) return null;
         const payload = asObject(data);
+        expectedTotal = cursorTotalCount(payload) ?? expectedTotal;
         const batch = payload.usageEvents ?? payload.usageEventsDisplay ?? [];
         if (!Array.isArray(batch) || batch.length === 0) break;
         events.push(...batch);
-        if (batch.length < 1000) break;
+        if (expectedTotal !== null && events.length >= expectedTotal) break;
+        if (expectedTotal === null && batch.length < 1000) break;
     }
     return events;
 }

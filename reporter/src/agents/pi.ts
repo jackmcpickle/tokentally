@@ -16,19 +16,29 @@ interface PiParseState {
     currentModel: string;
 }
 
+interface PiKeyedUsage {
+    model: string;
+    usage: ReporterTotals;
+}
+
 function piUsage(obj: JsonObject): JsonObject | null {
     if (obj.usage && typeof obj.usage === 'object') return asObject(obj.usage);
     const nested = asObject(obj.message).usage;
     return nested && typeof nested === 'object' ? asObject(nested) : null;
 }
 
+// `model_change` records carry the new model as `modelId` (plus a provider we
+// don't need); assistant messages carry `model` on the nested message.
 function piModel(obj: JsonObject): string | null {
+    const msg = asObject(obj.message);
     const m =
         obj.model ??
+        msg.model ??
+        obj.modelId ??
         obj.modelID ??
-        asObject(obj.message).model ??
+        msg.modelId ??
         asObject(obj.usage).model;
-    return typeof m === 'string' && m ? m : null;
+    return typeof m === 'string' && m.trim() ? m.trim() : null;
 }
 
 function piSessionId(obj: JsonObject): string | null {
@@ -37,11 +47,18 @@ function piSessionId(obj: JsonObject): string | null {
     return null;
 }
 
+// Blank or oversized ids don't identify a record; treat them as unkeyed.
+function piEntryId(obj: JsonObject): string | null {
+    if (typeof obj.id !== 'string') return null;
+    const id = obj.id.trim();
+    return id && id.length <= 1024 ? id : null;
+}
+
 function processPiLine(
     obj: JsonObject,
     state: PiParseState,
     models: Map<string, ReporterTotals>,
-    seen: Set<string>,
+    keyed: Map<string, PiKeyedUsage>,
 ): void {
     if (state.startedAt === null)
         state.startedAt = toMs(obj.timestamp ?? obj.time);
@@ -53,17 +70,16 @@ function processPiLine(
     const usage = piUsage(obj);
     if (!usage) return;
 
-    // Skip records already counted on another branch of the tree.
-    if (typeof obj.id === 'string') {
-        if (seen.has(obj.id)) return;
-        seen.add(obj.id);
+    const totals = usageFromFields(usage, PI_USAGE_FIELDS);
+    // Records with an id can repeat on another branch of the tree: keep the
+    // last occurrence per id and sum once at the end. Unkeyed records are
+    // always summed.
+    const id = piEntryId(obj);
+    if (id) {
+        keyed.set(id, { model: state.currentModel, usage: totals });
+        return;
     }
-
-    accumulateModelUsage(
-        models,
-        state.currentModel,
-        usageFromFields(usage, PI_USAGE_FIELDS),
-    );
+    accumulateModelUsage(models, state.currentModel, totals);
 }
 
 /**
@@ -76,7 +92,7 @@ export function parsePiRollout(
     opts: ParseOpts = {},
 ): ParsedTranscript {
     const models = new Map<string, ReporterTotals>();
-    const seen = new Set<string>();
+    const keyed = new Map<string, PiKeyedUsage>();
     const state: PiParseState = {
         sessionId: opts.sessionId ?? null,
         startedAt: null,
@@ -84,7 +100,10 @@ export function parsePiRollout(
     };
 
     for (const obj of jsonlObjects(text)) {
-        processPiLine(obj, state, models, seen);
+        processPiLine(obj, state, models, keyed);
+    }
+    for (const { model, usage } of keyed.values()) {
+        accumulateModelUsage(models, model, usage);
     }
 
     return {
@@ -95,10 +114,12 @@ export function parsePiRollout(
 }
 
 // pi stores one JSONL file per session, nested under a per-directory slug.
+// omp (the pi fork) uses the same layout under ~/.omp; scan both roots.
 export function piDirs(): string[] {
     const explicit =
         process.env.PI_CODING_AGENT_SESSION_DIR ?? process.env.PI_AGENT_DIR;
     const dirs = explicit ? [explicit] : [];
     dirs.push(join(homedir(), '.pi', 'agent', 'sessions'));
+    dirs.push(join(homedir(), '.omp', 'agent', 'sessions'));
     return dirs;
 }
