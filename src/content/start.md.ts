@@ -104,8 +104,10 @@ Username claims are invite-only. Open \`/invite?token=…\` in a browser first s
 POST /api/register
 Content-Type: application/json
 
-{ "username": "yourname", "turnstileToken": "…" }
+{ "username": "yourname", "turnstileToken": "…", "url": "https://example.com/me" }
 \`\`\`
+
+\`url\` is optional (https only). Omit it to claim without a public link — you can set or change it later with \`tokenmaxer set-profile-url\`.
 
 The response includes your username and token (shown once). Save the token — lost tokens cannot be recovered.
 

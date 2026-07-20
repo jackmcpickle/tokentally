@@ -270,6 +270,12 @@ export const Layout: FC<LayoutProps> = (props) => {
                             >
                                 Pricing
                             </a>
+                            <a
+                                class="nav-link text-muted no-underline hover:text-text"
+                                href="/footprint"
+                            >
+                                Footprint
+                            </a>
                         </div>
                         <div class="flex flex-col gap-2.5">
                             <span class="mb-1 font-display text-[13px] font-semibold tracking-[-0.13px] text-text">

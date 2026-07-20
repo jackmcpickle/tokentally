@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import app from '@/index';
 import { hashToken } from '@/lib/auth';
+import { profileCacheKey } from '@/lib/cached-aggregate';
 import type { Env } from '@/types';
 
 const TOKEN = 'tt_test_profile_token';
@@ -13,8 +14,7 @@ const USER = {
     profile_url: null as string | null,
 };
 
-function kv(): KVNamespace {
-    const store = new Map<string, string>();
+function kv(store = new Map<string, string>()): KVNamespace {
     return {
         get: async (key: string) => store.get(key) ?? null,
         put: async (key: string, value: string) => {
@@ -72,10 +72,10 @@ function db(): D1Database {
     } as unknown as D1Database;
 }
 
-function env(): Env {
+function env(rateLimit: KVNamespace = kv()): Env {
     return {
         DB: db(),
-        RATE_LIMIT: kv(),
+        RATE_LIMIT: rateLimit,
         ENVIRONMENT: 'test',
         PUBLIC_BASE_URL: 'https://tokenmaxer.quest',
         TURNSTYLE_SECRET_KEY: '',
@@ -137,6 +137,27 @@ describe('POST /api/profile', () => {
             url: null,
         });
         expect(USER.profile_url).toBeNull();
+    });
+
+    it('invalidates the cached profile on set', async () => {
+        USER.token_hash = await hashToken(TOKEN);
+        const store = new Map<string, string>([
+            [profileCacheKey('alice'), '{"stale":true}'],
+        ]);
+        const res = await app.request(
+            'https://tokenmaxer.quest/api/profile',
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${TOKEN}`,
+                },
+                body: JSON.stringify({ url: 'https://example.com/me' }),
+            },
+            env(kv(store)),
+        );
+        expect(res.status).toBe(200);
+        expect(store.has(profileCacheKey('alice'))).toBe(false);
     });
 
     it('rejects http urls', async () => {

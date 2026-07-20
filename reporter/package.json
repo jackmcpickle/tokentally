@@ -1,6 +1,6 @@
 {
     "name": "tokenmaxer",
-    "version": "0.2.0",
+    "version": "0.2.2",
     "description": "Reporter for tokenmaxer.quest — uploads per-session token counts (model names, session ids, timestamps; never prompts or code) from Claude Code, Codex, opencode, pi and Cursor.",
     "keywords": [
         "claude-code",
@@ -11,7 +11,15 @@
         "token-usage"
     ],
     "homepage": "https://tokenmaxer.quest",
+    "bugs": {
+        "url": "https://github.com/jackmcpickle/tokenmaxer/issues"
+    },
     "license": "MIT",
+    "author": {
+        "name": "Jack McNicol",
+        "email": "jackmcpickle@gmail.com",
+        "url": "https://github.com/jackmcpickle"
+    },
     "repository": {
         "type": "git",
         "url": "git+https://github.com/jackmcpickle/tokenmaxer.git",

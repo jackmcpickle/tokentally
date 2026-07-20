@@ -55,9 +55,9 @@ describe('isBrowserRequest', () => {
         'WhatsApp/2.0',
         'TelegramBot (like TwitterBot)',
     ])('is true for link-preview crawler %s', (ua) => {
-        expect(
-            isBrowserRequest(req({ Accept: '*/*', 'User-Agent': ua })),
-        ).toBe(true);
+        expect(isBrowserRequest(req({ Accept: '*/*', 'User-Agent': ua }))).toBe(
+            true,
+        );
     });
 });
 

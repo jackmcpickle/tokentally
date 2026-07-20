@@ -29,7 +29,7 @@
 //   tokenmaxer backfill [claude|codex|opencode|pi|cursor] # one-time: upload ALL past history
 //   tokenmaxer set-profile-url <https-url>|--clear # set or clear public profile link
 
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -1390,8 +1390,71 @@ async function reportOne(cfg, path, source) {
     process.stderr.write(`tokenmaxer: reported ${accepted} row(s)\n`);
 }
 
+// Commands you run yourself.
+const USER_COMMANDS = [
+    [
+        'backfill [claude|codex|opencode|pi|cursor]',
+        'one-time: upload ALL past history (optionally scoped to one source)',
+    ],
+    ['cursor-sync', 'sync recent Cursor dashboard usage'],
+    ['set-profile-url <https-url>', 'set your public profile link'],
+    ['set-profile-url --clear', 'clear your public profile link'],
+    ['help', 'show this help'],
+];
+
+// Commands wired into agent hooks (SessionStart/SessionEnd) — not run by hand.
+const HOOK_COMMANDS = [
+    [
+        'claude-sessionend',
+        'parse the just-ended Claude transcript (stdin JSON)',
+    ],
+    ['claude-sessionstart', 'catch up recent Claude sessions'],
+    ['codex-sessionstart', 'catch up recent Codex sessions'],
+    ['opencode-sessionstart', 'catch up recent opencode sessions'],
+    ['pi-sessionstart', 'catch up recent pi sessions'],
+    ['claude-report <path>', 'parse and report one Claude transcript'],
+    ['codex-report <path>', 'parse and report one Codex rollout'],
+    ['opencode-report <sessionID>', 'parse and report one opencode session'],
+    ['pi-report <path>', 'parse and report one pi session file'],
+];
+
+function printHelp() {
+    const pad = Math.max(
+        ...[...USER_COMMANDS, ...HOOK_COMMANDS].map(([c]) => c.length),
+    );
+    function fmt(rows) {
+        return rows.map(([c, d]) => `  ${c.padEnd(pad)}  ${d}`);
+    }
+    process.stdout.write(
+        [
+            'tokenmaxer — report per-session token usage to a tokenmaxer leaderboard.',
+            '',
+            'Usage: tokenmaxer <command> [args] [--dry-run]',
+            '',
+            'Commands you run:',
+            ...fmt(USER_COMMANDS),
+            '',
+            'Hook commands (wired into agent SessionStart/SessionEnd; not run by hand):',
+            ...fmt(HOOK_COMMANDS),
+            '',
+            'Append --dry-run to any command to print payloads instead of sending.',
+            '',
+            'Config: ~/.tokenmaxer/config.json => { "apiBase": "https://...", "token": "tt_..." }',
+            '  (env TOKENMAXER_API_BASE / TOKENMAXER_TOKEN override the file.)',
+            'Get a token and hooks at <https://tokenmaxer.quest/start>.',
+            '',
+        ].join('\n'),
+    );
+}
+
+const HELP_FLAGS = new Set(['help', '--help', '-h', undefined]);
+
 async function main() {
     const cmd = process.argv[2];
+    if (HELP_FLAGS.has(cmd)) {
+        printHelp();
+        return;
+    }
     if (cmd === 'set-profile-url') {
         await runSetProfileUrl(process.argv.slice(3));
         return;
@@ -1453,9 +1516,18 @@ async function main() {
 }
 
 // Only run as a CLI when executed directly — importing (tests) must not trigger it.
-const invokedDirectly =
-    typeof process.argv[1] === 'string' &&
-    import.meta.url === pathToFileURL(process.argv[1]).href;
+// argv[1] may be a symlink (global/npx bin); resolve it so import.meta.url matches.
+function invokedDirectlyAs(argvPath) {
+    if (typeof argvPath !== 'string') return false;
+    let resolved = argvPath;
+    try {
+        resolved = realpathSync(argvPath);
+    } catch {
+        // fall back to the raw path
+    }
+    return import.meta.url === pathToFileURL(resolved).href;
+}
+const invokedDirectly = invokedDirectlyAs(process.argv[1]);
 if (invokedDirectly) {
     main().catch((err) => {
         // Never break the host session — hooks must exit cleanly.

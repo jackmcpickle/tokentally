@@ -76,6 +76,7 @@ describe('invite session across /invite → /start', () => {
         expect(setCookie).toContain(await inviteCookieToken('secret'));
         expect(startHtml).toContain('id="reg"');
         expect(startHtml).toContain('id="username"');
+        expect(startHtml).toContain('id="profile-url"');
         expect(startHtml).not.toContain('Username claims are invite-only');
     });
 

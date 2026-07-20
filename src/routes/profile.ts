@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { authenticate } from '@/lib/auth';
+import { invalidateProfileCache } from '@/lib/cached-aggregate';
 import { rateLimit } from '@/lib/ratelimit';
 import { validateProfileUrl } from '@/lib/validate';
 import type { Env } from '@/types';
@@ -36,6 +37,7 @@ app.post('/profile', async (c) => {
     await c.env.DB.prepare('UPDATE users SET profile_url = ? WHERE id = ?')
         .bind(parsed.value, user.id)
         .run();
+    await invalidateProfileCache(c.env.RATE_LIMIT, user.username);
 
     return c.json({ username: user.username, url: parsed.value });
 });

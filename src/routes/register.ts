@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { authenticate, generateToken, hashToken, newId } from '@/lib/auth';
 import { getInviteCookie, inviteSessionAllowed } from '@/lib/invite';
 import { rateLimit } from '@/lib/ratelimit';
-import { validateUsername } from '@/lib/validate';
+import { validateProfileUrl, validateUsername } from '@/lib/validate';
 import type { Env } from '@/types';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -51,10 +51,12 @@ app.post('/register', async (c) => {
         .json<{
             username?: unknown;
             turnstileToken?: unknown;
+            url?: unknown;
         }>()
         .catch(() => ({
             username: undefined,
             turnstileToken: undefined,
+            url: undefined,
         }));
 
     const invited = await inviteSessionAllowed(
@@ -74,6 +76,10 @@ app.post('/register', async (c) => {
     if (!check.ok) return c.json({ error: check.error }, 400);
     const username = check.value;
 
+    const urlCheck = validateProfileUrl(body.url ?? null);
+    if (!urlCheck.ok) return c.json({ error: urlCheck.error }, 400);
+    const profileUrl = urlCheck.value;
+
     const existing = await c.env.DB.prepare(
         'SELECT id FROM users WHERE username_lower = ?',
     )
@@ -87,9 +93,16 @@ app.post('/register', async (c) => {
 
     try {
         await c.env.DB.prepare(
-            'INSERT INTO users (id, username, username_lower, token_hash, created_at) VALUES (?, ?, ?, ?, ?)',
+            'INSERT INTO users (id, username, username_lower, token_hash, created_at, profile_url) VALUES (?, ?, ?, ?, ?, ?)',
         )
-            .bind(id, username, username.toLowerCase(), tokenHash, Date.now())
+            .bind(
+                id,
+                username,
+                username.toLowerCase(),
+                tokenHash,
+                Date.now(),
+                profileUrl,
+            )
             .run();
     } catch {
         // Unique-index race: someone claimed the name between the check and insert.

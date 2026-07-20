@@ -74,4 +74,3 @@ describe('GET /about content negotiation (real app)', () => {
         expect(await res.text()).toContain('property="og:image"');
     });
 });
-

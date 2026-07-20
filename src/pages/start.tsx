@@ -83,6 +83,7 @@ if (form) {
     e.preventDefault();
     err.textContent = '';
     const username = document.getElementById('username').value.trim();
+    const profileUrl = document.getElementById('profile-url').value.trim();
     const turnstileToken = form.querySelector('[name="cf-turnstile-response"]')?.value;
     if (!turnstileToken) { err.textContent = 'Please complete the verification.'; return; }
     const btn = form.querySelector('button');
@@ -93,7 +94,11 @@ if (form) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ username, turnstileToken })
+        body: JSON.stringify(
+          profileUrl
+            ? { username, turnstileToken, url: profileUrl }
+            : { username, turnstileToken }
+        )
       });
       const data = await res.json();
       if (!res.ok) {
@@ -172,9 +177,9 @@ export const Start: FC<{
         <section class={hero}>
             <h1 class="reveal">Claim your name</h1>
             <p class={`${sub} reveal reveal-delay`}>
-                Pick a username, get a token, let your agent set everything up.
-                No email, no password — the token is your only credential, so
-                keep it somewhere safe.
+                Pick a username, optionally add a public profile link, get a
+                token, let your agent set everything up. No email, no password —
+                the token is your only credential, so keep it somewhere safe.
             </p>
         </section>
 
@@ -198,6 +203,20 @@ export const Start: FC<{
                                 placeholder="e.g. tokenlord"
                                 autocomplete="off"
                                 required
+                            />
+                        </label>
+                        <label
+                            class={field}
+                            htmlFor="profile-url"
+                        >
+                            <span class={fieldLbl}>
+                                Profile URL (optional, https)
+                            </span>
+                            <Input
+                                variant="text"
+                                id="profile-url"
+                                placeholder="https://github.com/you"
+                                autocomplete="off"
                             />
                         </label>
                         <div

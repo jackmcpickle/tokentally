@@ -22,9 +22,7 @@ function createCacheMiddleware(options: {
         cacheName: options.cacheName,
         cacheControl: CACHE_CONTROL,
         ...(options.vary ? { vary: options.vary } : {}),
-        ...(options.keyGenerator
-            ? { keyGenerator: options.keyGenerator }
-            : {}),
+        ...(options.keyGenerator ? { keyGenerator: options.keyGenerator } : {}),
         onCacheNotAvailable: false,
     });
 

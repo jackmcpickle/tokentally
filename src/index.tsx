@@ -1,16 +1,20 @@
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import {
-    AGENT_PAGE_VARY,
-    isBrowserRequest,
-} from '@/lib/agent-markdown';
+import { AGENT_PAGE_VARY, isBrowserRequest } from '@/lib/agent-markdown';
 import { baseUrl } from '@/lib/base-url';
 import {
     cachedDistinctModelFamilies,
     cachedLeaderboard,
     cachedProfile,
 } from '@/lib/cached-aggregate';
+import {
+    estimateImpact,
+    impactValue,
+    parseImpactMetric,
+    parseImpactRegion,
+    parseImpactScenario,
+} from '@/lib/impact';
 import {
     getInviteCookie,
     inviteAllowed,
@@ -19,6 +23,8 @@ import {
 } from '@/lib/invite';
 import { pageCache } from '@/lib/page-cache';
 import { About } from '@/pages/about';
+import { Footprint } from '@/pages/footprint';
+import type { FootprintEntry } from '@/pages/footprint-chart';
 import { Home } from '@/pages/home';
 import { Layout } from '@/pages/layout';
 import { Pricing } from '@/pages/pricing';
@@ -181,6 +187,56 @@ app.get('/about', async (c) => {
     if (!isBrowserRequest(c.req.raw)) return serveAboutMarkdown(c);
     withAgentDiscoveryHeaders(c);
     return c.html(<About base={baseUrl(c.env, c.req.url)} />);
+});
+
+app.get('/footprint', pageCache, async (c) => {
+    const window = parseWindow(c.req.query('window'));
+    const metric = parseImpactMetric(c.req.query('metric'));
+    const scenario = parseImpactScenario(c.req.query('scenario'));
+    const region = parseImpactRegion(c.req.query('region'));
+    const source = parseSourceParam(c.req.query('source'));
+    const modelRaw = c.req.query('model');
+    const model = modelRaw && modelRaw.length > 0 ? modelRaw : undefined;
+    const base = baseUrl(c.env, c.req.url);
+
+    // Fetch with token metric so cache keys stay shared with Home; re-rank by impact.
+    const [rawEntries, models] = await Promise.all([
+        cachedLeaderboard(
+            c.env.DB,
+            c.env.RATE_LIMIT,
+            { window, metric: 'total', source, model, limit: 100 },
+            Date.now(),
+        ),
+        cachedDistinctModelFamilies(c.env.DB, c.env.RATE_LIMIT),
+    ]);
+
+    const ranked: FootprintEntry[] = rawEntries
+        .map((e) => ({
+            username: e.username,
+            sessions: e.sessions,
+            grand_total: e.grand_total,
+            impact: estimateImpact(e.grand_total, scenario, region),
+        }))
+        .sort(
+            (a, b) =>
+                impactValue(b.impact, metric) - impactValue(a.impact, metric),
+        )
+        .map((e, i) => ({ ...e, rank: i + 1 }));
+
+    withAgentDiscoveryHeaders(c);
+    return c.html(
+        <Footprint
+            base={base}
+            entries={ranked}
+            models={models}
+            window={window}
+            metric={metric}
+            scenario={scenario}
+            region={region}
+            source={source}
+            model={model}
+        />,
+    );
 });
 
 app.get('/pricing', async (c) => {
