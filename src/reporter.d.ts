@@ -23,6 +23,7 @@ declare module '*/tokentally.mjs' {
     export interface ParsedCodexRollout extends ParsedTranscript {
         parent_id: string | null;
         pending_inherited: CodexPendingUsage[];
+        token_sequence: string[];
     }
     export interface ReporterRow extends ReporterTotals {
         session_id: string;

@@ -58,6 +58,10 @@ are cut at the `trigger_turn` boundary marker; older files without the marker
 are resolved by matching the child's initial token sequence against the parent
 rollout, which is read **locally only** — nothing extra leaves your machine.
 
+Excluded replay still reports a zero-total row for each affected model, so
+re-running `tokenmaxer backfill codex` overwrites any rows that older reporter
+versions inflated for those sessions.
+
 ## Cursor manual auth fallback
 
 `cursor-sync` normally reads your Cursor login from Cursor's local

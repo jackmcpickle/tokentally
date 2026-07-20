@@ -87,15 +87,7 @@ export function parseClaudeTranscript(text, opts = {}) {
     let sessionId = opts.sessionId ?? null;
     let startedAt = null;
 
-    for (const line of text.split('\n')) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        let obj;
-        try {
-            obj = JSON.parse(trimmed);
-        } catch {
-            continue;
-        }
+    for (const obj of jsonlObjects(text)) {
         if (startedAt === null) startedAt = toMs(obj.timestamp);
         if (!sessionId && typeof obj.sessionId === 'string')
             sessionId = obj.sessionId;
@@ -209,19 +201,24 @@ function processCodexLine(obj, state, models) {
         return;
     }
     // The boundary marker only delimits a thread-spawn child's own replay;
-    // forks resolve against the parent rollout at EOF instead.
+    // forks resolve against the parent rollout at EOF instead. The first
+    // marker in a spawn child's file is its own spawn boundary: replayed
+    // parent history does not carry markers, and markers from the child's
+    // own later subagent activity can only appear after this one has
+    // disarmed inheritance (v1 files predate the marker entirely and never
+    // contain one, so they always take the EOF resolution path).
     if (
         state.inherited &&
         state.parentSpawn &&
         isCodexTurnBoundary(obj, payload)
     ) {
-        state.pending.length = 0;
-        state.inherited = false;
+        dropInheritedPending(state, models);
         return;
     }
     if (obj.type === 'event_msg' && payload.type === 'token_count') {
         const last = payload.info?.last_token_usage;
         if (!last || typeof last !== 'object') return;
+        state.tokenKeys.push(codexUsageKey(last));
         if (state.inherited) {
             // Possibly replayed parent history — hold until the turn boundary
             // (dropped there) or EOF (resolved against the parent rollout).
@@ -230,6 +227,18 @@ function processCodexLine(obj, state, models) {
         }
         addCodexUsage(models, state.currentModel, last);
     }
+}
+
+// Discard held replay, but keep a zero-total row for every model it touched:
+// the pre-fix reporter posted the replayed usage under those (session, model)
+// keys, and the server upsert can only overwrite the inflated rows if a
+// corrected report still submits them.
+function dropInheritedPending(state, models) {
+    for (const { model } of state.pending) {
+        if (!models.has(model)) models.set(model, emptyTotals());
+    }
+    state.pending.length = 0;
+    state.inherited = false;
 }
 
 /**
@@ -253,6 +262,7 @@ export function parseCodexRollout(text, opts = {}) {
         parentSpawn: false,
         inherited: false,
         pending: [],
+        tokenKeys: [],
     };
 
     for (const obj of jsonlObjects(text)) {
@@ -266,6 +276,9 @@ export function parseCodexRollout(text, opts = {}) {
         parent_id: state.parentId,
         // Emptied at the boundary, so anything left is unresolved held usage.
         pending_inherited: state.pending,
+        // Every token tuple in file order — this session's sequence when it
+        // is later looked up as some other session's parent.
+        token_sequence: state.tokenKeys,
     };
 }
 
@@ -292,12 +305,24 @@ function codexTokenSequence(text) {
     return keys;
 }
 
+// A tuple with real input is very unlikely to repeat by coincidence; all-zero
+// or output-only tuples can.
+function isDistinctiveKey(key) {
+    return !key.startsWith('0|');
+}
+
 // Replayed history is the parent's rollout from its beginning up to the
-// spawn/fork point, so a genuine replay matches the parent's own initial
-// token sequence. Anchoring the comparison at the parent's start keeps a
-// coincidental value match elsewhere in the parent (identical small turns are
-// common) from silently discarding genuine child usage. A single-event match
-// may still be coincidence, so require >= 2 consecutive matches.
+// spawn/fork point, so a genuine replay normally matches the parent's own
+// initial token sequence — the comparison is anchored at the parent's start
+// so a coincidental value match elsewhere in the parent (identical small
+// turns are common) cannot silently discard genuine child usage. When the
+// anchor misses (parent file compacted since the spawn, or the parent is
+// itself a subagent whose file starts with its own inherited replay), an
+// interior match is accepted only with stronger evidence: at least three
+// consecutive tuples, one of them distinctive. A single-event match may
+// always be coincidence and is never dropped — the cost is at most one
+// duplicated turn for a parent that spawned after a single turn, which the
+// source audit also treated as unconfirmable.
 function inheritedPrefixLength(parentKeys, childKeys) {
     let k = 0;
     while (
@@ -307,7 +332,24 @@ function inheritedPrefixLength(parentKeys, childKeys) {
     ) {
         k += 1;
     }
-    return k >= 2 ? k : 0;
+    if (k >= 2) return k;
+
+    let best = 0;
+    for (let i = 1; i < parentKeys.length; i += 1) {
+        if (parentKeys[i] !== childKeys[0]) continue;
+        let n = 0;
+        while (
+            n < childKeys.length &&
+            i + n < parentKeys.length &&
+            parentKeys[i + n] === childKeys[n]
+        ) {
+            n += 1;
+        }
+        if (n > best) best = n;
+    }
+    if (best >= 3 && childKeys.slice(0, best).some(isDistinctiveKey))
+        return best;
+    return 0;
 }
 
 /**
@@ -331,6 +373,11 @@ export function resolveCodexInherited(parsed, parent) {
         parentKeys,
         pending.map((p) => codexUsageKey(p.last)),
     );
+    // Zero-total rows for dropped models keep the server upsert able to
+    // overwrite rows the pre-fix reporter inflated for this session.
+    for (const { model } of pending.slice(0, drop)) {
+        if (!parsed.models.has(model)) parsed.models.set(model, emptyTotals());
+    }
     for (const { model, last } of pending.slice(drop)) {
         addCodexUsage(parsed.models, model, last);
     }
@@ -510,15 +557,7 @@ export function parsePiRollout(text, opts = {}) {
         currentModel: 'unknown',
     };
 
-    for (const line of text.split('\n')) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        let obj;
-        try {
-            obj = JSON.parse(trimmed);
-        } catch {
-            continue;
-        }
+    for (const obj of jsonlObjects(text)) {
         processPiLine(obj, state, models, seen);
     }
 
@@ -612,7 +651,8 @@ const CODEX_ROLLOUT_FILE = /^rollout-.*\.jsonl$/iu;
 // declared parent of subagent/fork children whose replayed history must be
 // matched against the parent rollout. Filenames look like
 // rollout-2026-07-18T09-00-00-<uuid>.jsonl; keys are lowercased so lookups
-// by parent_thread_id are case-insensitive.
+// by parent_thread_id are case-insensitive. Files without a trailing UUID
+// are keyed by their stripped name minus any leading timestamp.
 let codexRolloutsById = null;
 function codexRolloutPathById(id) {
     if (typeof id !== 'string' || !id) return null;
@@ -625,30 +665,41 @@ function codexRolloutPathById(id) {
                 const m = basename(f).match(
                     /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl$/iu,
                 );
-                const key = (m ? m[1] : sessionIdFromPath(f)).toLowerCase();
-                codexRolloutsById.set(key, f);
+                const key =
+                    m?.[1] ??
+                    sessionIdFromPath(f).replace(
+                        /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-/iu,
+                        '',
+                    );
+                codexRolloutsById.set(key.toLowerCase(), f);
             }
         }
     }
     return codexRolloutsById.get(id.toLowerCase()) ?? null;
 }
 
-// Token sequences of parent rollouts, memoized so a parent that spawned many
-// children is read and tokenized once, not once per child.
-const codexParentSequences = new Map();
+// Token sequences by session id, so a parent that spawned many children is
+// tokenized once per run. parseFile seeds this from every rollout it parses
+// (a parent already processed this run is never re-read from disk); a child
+// met before its parent falls back to one memoized disk read. Read failures
+// are not cached, so a transient error on one child does not leave every
+// later sibling resolving against nothing.
+const codexSequencesById = new Map();
 function codexParentSequenceById(parentId) {
-    const path = codexRolloutPathById(parentId);
+    if (typeof parentId !== 'string' || !parentId) return null;
+    const id = parentId.toLowerCase();
+    const cached = codexSequencesById.get(id);
+    if (cached) return cached;
+    const path = codexRolloutPathById(id);
     if (!path) return null;
-    if (!codexParentSequences.has(path)) {
-        let keys = null;
-        try {
-            keys = codexTokenSequence(readFileSync(path, 'utf8'));
-        } catch {
-            /* parent unreadable — treat as not found */
-        }
-        codexParentSequences.set(path, keys);
+    let keys;
+    try {
+        keys = codexTokenSequence(readFileSync(path, 'utf8'));
+    } catch {
+        return null;
     }
-    return codexParentSequences.get(path);
+    codexSequencesById.set(id, keys);
+    return keys;
 }
 
 // opencode stores one JSON file per message under storage/message/<sessionID>/.
@@ -967,6 +1018,12 @@ function parseFile(path, source) {
     let parsed;
     if (source === 'codex') {
         parsed = parseCodexRollout(text, { fallbackStartedAt });
+        if (typeof parsed.session_id === 'string') {
+            codexSequencesById.set(
+                parsed.session_id.toLowerCase(),
+                parsed.token_sequence,
+            );
+        }
         if (parsed.pending_inherited.length > 0) {
             resolveCodexInherited(
                 parsed,

@@ -224,11 +224,37 @@ describe('parseCodexRollout thread-spawn children', () => {
                 tokenCount(11, 0, 5, 1),
             ].join('\n'),
         );
-        expect(parsed.models.has('unknown')).toBe(false);
+        // Dropped replay leaves a zero-total row so a corrected re-report
+        // overwrites any inflated row the pre-fix reporter posted.
+        const unknown = parsed.models.get('unknown');
+        expect(unknown?.input_tokens).toBe(0);
+        expect(unknown?.output_tokens).toBe(0);
+        expect(unknown?.cache_read_tokens).toBe(0);
         const t = parsed.models.get('gpt-5-codex');
         expect(t?.input_tokens).toBe(11);
         expect(t?.output_tokens).toBe(5);
         expect(parsed.pending_inherited).toHaveLength(0);
+    });
+
+    it('emits zero rows for a fully inherited child so stale server rows get overwritten', () => {
+        const parsed = parseCodexRollout(
+            [
+                CHILD_META,
+                tokenCount(100, 80, 10, 2),
+                TURN_CONTEXT,
+                tokenCount(200, 160, 20, 4),
+                TRIGGER_TURN,
+            ].join('\n'),
+        );
+        const rows = toRows(parsed, '/x/rollout-child-1.jsonl');
+        expect(rows.map((r) => r.model).sort()).toEqual([
+            'gpt-5-codex',
+            'unknown',
+        ]);
+        for (const row of rows) {
+            expect(row.input_tokens).toBe(0);
+            expect(row.output_tokens).toBe(0);
+        }
     });
 
     it('drops inherited pre-boundary usage recorded after turn_context (named variant)', () => {
@@ -344,7 +370,7 @@ describe('parseCodexRollout thread-spawn children', () => {
         expect(t?.output_tokens).toBe(5);
     });
 
-    it('resolveCodexInherited keeps a run that matches the parent only mid-sequence', () => {
+    it('resolveCodexInherited keeps a short run that matches the parent only mid-sequence', () => {
         const parsed = parseCodexRollout(
             [
                 CHILD_META,
@@ -356,6 +382,30 @@ describe('parseCodexRollout thread-spawn children', () => {
         );
         resolveCodexInherited(parsed, PARENT_ROLLOUT);
         expect(parsed.models.get('gpt-5-codex')?.input_tokens).toBe(511);
+    });
+
+    it('resolveCodexInherited drops a strong interior match (parent is itself a subagent)', () => {
+        // Parent file starts with its own inherited replay (50...), so the
+        // child's replayed prefix only matches from the parent's second event.
+        const nestedParent = [
+            codexLine('session_meta', { id: 'parent-1', model: 'gpt-5-codex' }),
+            tokenCount(50, 0, 5, 1),
+            tokenCount(100, 80, 10, 2),
+            tokenCount(200, 160, 20, 4),
+            tokenCount(300, 240, 30, 6),
+        ].join('\n');
+        const parsed = parseCodexRollout(
+            [
+                CHILD_META,
+                TURN_CONTEXT,
+                tokenCount(100, 80, 10, 2),
+                tokenCount(200, 160, 20, 4),
+                tokenCount(300, 240, 30, 6),
+                tokenCount(11, 0, 5, 1),
+            ].join('\n'),
+        );
+        resolveCodexInherited(parsed, nestedParent);
+        expect(parsed.models.get('gpt-5-codex')?.input_tokens).toBe(11);
     });
 
     it('resolveCodexInherited keeps a single-event match (may be coincidence)', () => {
