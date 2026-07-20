@@ -11,11 +11,19 @@
         "token-usage"
     ],
     "homepage": "https://tokenmaxer.quest",
+    "author": {
+        "name": "Jack McNicol",
+        "email": "jackmcpickle@gmail.com",
+        "url": "https://github.com/jackmcpickle"
+    },
     "license": "MIT",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/jackmcpickle/tokenmaxer.git",
         "directory": "reporter"
+    },
+    "bugs": {
+        "url": "https://github.com/jackmcpickle/tokenmaxer/issues"
     },
     "bin": {
         "tokenmaxer": "./tokentally.mjs"
