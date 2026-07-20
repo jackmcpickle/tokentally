@@ -293,6 +293,14 @@ export const Layout: FC<LayoutProps> = (props) => {
                             >
                                 Install hooks
                             </a>
+                            <a
+                                class="nav-link text-muted no-underline hover:text-text"
+                                href="https://github.com/jackmcpickle/tokenmaxer"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                GitHub
+                            </a>
                         </div>
                     </footer>
                 </div>
