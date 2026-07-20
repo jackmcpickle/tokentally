@@ -63,4 +63,77 @@ describe('estimateCost', () => {
         });
         expect(cost).toBeCloseTo(22.05, 4);
     });
+
+    it('claude_code source stays additive (cache buckets are distinct)', () => {
+        const t = {
+            input_tokens: 1_000_000,
+            output_tokens: 1_000_000,
+            cache_read_tokens: 1_000_000,
+            cache_creation_tokens: 1_000_000,
+        };
+        expect(estimateCost('claude-sonnet-5', t, 'claude_code')).toBeCloseTo(
+            estimateCost('claude-sonnet-5', t),
+            8,
+        );
+    });
+
+    it('codex source treats cached tokens as a subset of input', () => {
+        // gpt-5: input $1.25/M, cacheRead $0.125/M, output $10/M.
+        // input 1M includes 400k cached: 600k @ 1.25 + 400k @ 0.125 + 1M out.
+        const cost = estimateCost(
+            'gpt-5',
+            {
+                input_tokens: 1_000_000,
+                output_tokens: 1_000_000,
+                cache_read_tokens: 400_000,
+                cache_creation_tokens: 0,
+            },
+            'codex',
+        );
+        expect(cost).toBeCloseTo(0.6 * 1.25 + 0.4 * 0.125 + 10, 6);
+    });
+
+    it('codex source clamps cached tokens to the input total', () => {
+        // cached > input can only be bad data; never bill negative input.
+        const cost = estimateCost(
+            'gpt-5',
+            {
+                input_tokens: 100_000,
+                output_tokens: 0,
+                cache_read_tokens: 500_000,
+                cache_creation_tokens: 0,
+            },
+            'codex',
+        );
+        expect(cost).toBeCloseTo(0.1 * 0.125, 6);
+    });
+
+    it('codex source clamps cache writes to the non-cached remainder', () => {
+        // gpt-5 cacheWrite $1.25/M: 400k cached + 600k write fills input;
+        // the extra 200k write must not be billed on top.
+        const cost = estimateCost(
+            'gpt-5',
+            {
+                input_tokens: 1_000_000,
+                output_tokens: 0,
+                cache_read_tokens: 400_000,
+                cache_creation_tokens: 800_000,
+            },
+            'codex',
+        );
+        expect(cost).toBeCloseTo(0.4 * 0.125 + 0.6 * 1.25, 6);
+    });
+
+    it('pi source uses the same subset formula as codex', () => {
+        const t = {
+            input_tokens: 1_000_000,
+            output_tokens: 0,
+            cache_read_tokens: 1_000_000,
+            cache_creation_tokens: 0,
+        };
+        expect(estimateCost('gpt-5', t, 'pi')).toBeCloseTo(
+            estimateCost('gpt-5', t, 'codex'),
+            8,
+        );
+    });
 });

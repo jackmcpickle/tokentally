@@ -117,6 +117,118 @@ describe('parseClaudeTranscript', () => {
         expect(rows[0]?.model).toBe('claude-opus-4-8-20260101');
     });
 
+    it('dedupes streamed chunks sharing messageId:requestId — last chunk wins', () => {
+        // Streaming writes several transcript lines for one API message, each
+        // carrying cumulative usage; only the final chunk may be counted.
+        function line(usage: object) {
+            return JSON.stringify({
+                type: 'assistant',
+                timestamp: '2026-07-18T10:00:05Z',
+                sessionId: 'sess-dup',
+                requestId: 'req_1',
+                message: { id: 'msg_1', model: 'claude-sonnet-5', usage },
+            });
+        }
+        const parsed = parseClaudeTranscript(
+            [
+                line({ input_tokens: 100, output_tokens: 10 }),
+                line({ input_tokens: 100, output_tokens: 50 }),
+                line({
+                    input_tokens: 100,
+                    output_tokens: 90,
+                    cache_read_input_tokens: 400,
+                }),
+            ].join('\n'),
+        );
+        const t = parsed.models.get('claude-sonnet-5');
+        expect(t?.input_tokens).toBe(100);
+        expect(t?.output_tokens).toBe(90);
+        expect(t?.cache_read_tokens).toBe(400);
+    });
+
+    it('dedupes by messageId or requestId alone when the other is missing', () => {
+        const parsed = parseClaudeTranscript(
+            [
+                JSON.stringify({
+                    type: 'assistant',
+                    sessionId: 'sess-half',
+                    message: {
+                        id: 'msg_only',
+                        model: 'claude-sonnet-5',
+                        usage: { input_tokens: 10, output_tokens: 1 },
+                    },
+                }),
+                JSON.stringify({
+                    type: 'assistant',
+                    sessionId: 'sess-half',
+                    message: {
+                        id: 'msg_only',
+                        model: 'claude-sonnet-5',
+                        usage: { input_tokens: 10, output_tokens: 5 },
+                    },
+                }),
+            ].join('\n'),
+        );
+        const t = parsed.models.get('claude-sonnet-5');
+        expect(t?.input_tokens).toBe(10);
+        expect(t?.output_tokens).toBe(5);
+    });
+
+    it('keeps distinct messages and rows without any id', () => {
+        function keyedLine(id: string, output: number) {
+            return JSON.stringify({
+                type: 'assistant',
+                sessionId: 'sess-mix',
+                requestId: `req_${id}`,
+                message: {
+                    id,
+                    model: 'claude-sonnet-5',
+                    usage: { input_tokens: 100, output_tokens: output },
+                },
+            });
+        }
+        const unkeyedLine = JSON.stringify({
+            type: 'assistant',
+            sessionId: 'sess-mix',
+            message: {
+                model: 'claude-sonnet-5',
+                usage: { input_tokens: 7, output_tokens: 3 },
+            },
+        });
+        const parsed = parseClaudeTranscript(
+            [
+                keyedLine('msg_a', 10),
+                keyedLine('msg_b', 20),
+                // Unkeyed rows can never collide — both must count.
+                unkeyedLine,
+                unkeyedLine,
+            ].join('\n'),
+        );
+        const t = parsed.models.get('claude-sonnet-5');
+        expect(t?.input_tokens).toBe(100 + 100 + 7 + 7);
+        expect(t?.output_tokens).toBe(10 + 20 + 3 + 3);
+    });
+
+    it('attributes a deduped message to its final chunk model', () => {
+        function line(model: string) {
+            return JSON.stringify({
+                type: 'assistant',
+                sessionId: 'sess-model',
+                requestId: 'req_m',
+                message: {
+                    id: 'msg_m',
+                    model,
+                    usage: { input_tokens: 5, output_tokens: 5 },
+                },
+            });
+        }
+        const parsed = parseClaudeTranscript(
+            [line('claude-sonnet-5'), line('claude-opus-4-8')].join('\n'),
+        );
+        expect(parsed.models.has('claude-sonnet-5')).toBe(false);
+        expect(parsed.models.get('claude-opus-4-8')?.input_tokens).toBe(5);
+    });
+
     it('drops <synthetic> model rows from toRows', () => {
         const parsed = parseClaudeTranscript(
             [

@@ -78,34 +78,66 @@ function* jsonlObjects(text) {
     }
 }
 
+// One assistant transcript line's usage, or null when it carries none.
+// `key` is `${message.id}:${requestId}` when either id is present; streamed
+// chunks of one API message share it, so keyed rows dedupe last-wins.
+function claudeUsageRow(obj) {
+    if (obj.type !== 'assistant') return null;
+    const msg = obj.message;
+    const usage = msg?.usage;
+    if (!usage || typeof usage !== 'object') return null;
+    const messageId = typeof msg.id === 'string' ? msg.id : '';
+    const requestId = typeof obj.requestId === 'string' ? obj.requestId : '';
+    return {
+        key: messageId || requestId ? `${messageId}:${requestId}` : null,
+        model:
+            typeof msg.model === 'string' && msg.model ? msg.model : 'unknown',
+        usage: {
+            input_tokens: num(usage.input_tokens),
+            output_tokens: num(usage.output_tokens),
+            cache_read_tokens: num(usage.cache_read_input_tokens),
+            cache_creation_tokens: num(usage.cache_creation_input_tokens),
+            reasoning_tokens: 0,
+        },
+    };
+}
+
+function sumClaudeRows(rows) {
+    const models = new Map();
+    for (const { model, usage } of rows) {
+        const t = models.get(model) ?? emptyTotals();
+        for (const k of Object.keys(usage)) t[k] += usage[k];
+        models.set(model, t);
+    }
+    return models;
+}
+
 /**
  * Parse a Claude Code transcript (JSONL). One transcript = one session that may
  * touch several models. Returns { session_id, started_at, models: {model: totals} }.
+ *
+ * Streaming writes several transcript lines per API message, each carrying
+ * cumulative usage; rows sharing a `message.id`/`requestId` key are deduped
+ * last-wins so only the final chunk counts. Rows without either id can never
+ * collide and are all kept.
  */
 export function parseClaudeTranscript(text, opts = {}) {
-    const models = new Map();
     let sessionId = opts.sessionId ?? null;
     let startedAt = null;
+    const keyed = new Map();
+    const unkeyed = [];
 
     for (const obj of jsonlObjects(text)) {
         if (startedAt === null) startedAt = toMs(obj.timestamp);
         if (!sessionId && typeof obj.sessionId === 'string')
             sessionId = obj.sessionId;
-
-        if (obj.type !== 'assistant') continue;
-        const msg = obj.message;
-        const usage = msg?.usage;
-        if (!usage || typeof usage !== 'object') continue;
-
-        const model =
-            typeof msg.model === 'string' && msg.model ? msg.model : 'unknown';
-        const t = models.get(model) ?? emptyTotals();
-        t.input_tokens += num(usage.input_tokens);
-        t.output_tokens += num(usage.output_tokens);
-        t.cache_read_tokens += num(usage.cache_read_input_tokens);
-        t.cache_creation_tokens += num(usage.cache_creation_input_tokens);
-        models.set(model, t);
+        const row = claudeUsageRow(obj);
+        if (!row) continue;
+        if (row.key === null) unkeyed.push(row);
+        else keyed.set(row.key, row);
     }
+
+    const models = sumClaudeRows([...keyed.values(), ...unkeyed]);
 
     return {
         session_id: sessionId ?? opts.sessionId ?? null,

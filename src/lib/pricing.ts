@@ -280,9 +280,39 @@ export interface TokenCounts {
     cache_creation_tokens: number;
 }
 
-/** Estimated USD cost for one model's token counts. */
-export function estimateCost(model: string, t: TokenCounts): number {
+// Sources whose `input_tokens` already include the cache reads/writes
+// (Codex `last_token_usage` and pi report cumulative input): billing them
+// additively would double-charge, so cache tokens are carved out of input.
+const INPUT_INCLUDES_CACHE = new Set(['codex', 'pi']);
+
+/**
+ * Estimated USD cost for one model's token counts. For sources where input
+ * is a superset of the cache buckets, cached reads (clamped to input) and
+ * cache writes (clamped to the remainder) are priced at their own rates and
+ * only the rest at the input rate; other sources report distinct buckets
+ * and are priced additively.
+ */
+export function estimateCost(
+    model: string,
+    t: TokenCounts,
+    source?: string,
+): number {
     const p = priceFor(model);
+    if (source !== undefined && INPUT_INCLUDES_CACHE.has(source)) {
+        const cached = Math.min(t.cache_read_tokens, t.input_tokens);
+        const cacheWrite = Math.min(
+            t.cache_creation_tokens,
+            t.input_tokens - cached,
+        );
+        const nonCached = t.input_tokens - cached - cacheWrite;
+        return (
+            (nonCached * p.input +
+                cached * p.cacheRead +
+                cacheWrite * p.cacheWrite +
+                t.output_tokens * p.output) /
+            1_000_000
+        );
+    }
     return (
         (t.input_tokens * p.input +
             t.output_tokens * p.output +

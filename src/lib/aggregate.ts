@@ -95,7 +95,7 @@ function addRow(t: Totals, r: GroupedRow): void {
     t.cache_read_tokens += r.cache_read_tokens;
     t.cache_creation_tokens += r.cache_creation_tokens;
     t.reasoning_tokens += r.reasoning_tokens;
-    t.cost += estimateCost(r.model, r);
+    t.cost += estimateCost(r.model, r, r.source);
 }
 
 export function grandTotal(t: Totals): number {
