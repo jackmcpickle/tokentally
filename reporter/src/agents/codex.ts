@@ -1,23 +1,23 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
-import { asObject, jsonlObjects, toMs } from '../lib/parse-utils.ts';
+import { walkJsonl } from '../lib/fs-walk';
+import { asObject, jsonlObjects, toMs } from '../lib/parse-utils';
+import { sessionIdFromPath } from '../lib/rows';
 import {
     accumulateModelUsage,
     emptyTotals,
     num,
     usageFromFields,
-} from '../lib/totals.ts';
-import { sessionIdFromPath } from '../lib/rows.ts';
+} from '../lib/totals';
 import type {
     CodexPendingUsage,
     JsonObject,
     ParseOpts,
     ParsedCodexRollout,
     ReporterTotals,
-} from '../lib/types.ts';
-import { CODEX_USAGE_FIELDS } from '../lib/usage-fields.ts';
-import { walkJsonl } from '../lib/fs-walk.ts';
+} from '../lib/types';
+import { CODEX_USAGE_FIELDS } from '../lib/usage-fields';
 
 interface CodexParseState {
     sessionId: string | null;

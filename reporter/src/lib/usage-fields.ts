@@ -32,11 +32,7 @@ export const PI_USAGE_FIELDS = {
         'cache_write',
         'cache_creation_input_tokens',
     ],
-    reasoning: [
-        'reasoning',
-        'reasoning_tokens',
-        'reasoning_output_tokens',
-    ],
+    reasoning: ['reasoning', 'reasoning_tokens', 'reasoning_output_tokens'],
 } as const;
 
 export const CURSOR_USAGE_FIELDS = {

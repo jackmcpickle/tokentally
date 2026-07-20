@@ -1,5 +1,5 @@
-import { walkJsonl } from './fs-walk.ts';
-import type { ReporterRow } from './types.ts';
+import { walkJsonl } from './fs-walk';
+import type { ReporterRow } from './types';
 
 export function collectRowsFromJsonlDirs(options: {
     dirs: string[];

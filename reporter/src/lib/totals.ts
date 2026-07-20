@@ -1,4 +1,4 @@
-import type { JsonObject, ReporterTotals, TotalsKey } from './types.ts';
+import type { JsonObject, ReporterTotals, TotalsKey } from './types';
 
 export function emptyTotals(): ReporterTotals {
     return {
@@ -39,7 +39,9 @@ export function usageFromFields(
         output_tokens: firstNum(obj, fields.output),
         cache_read_tokens: firstNum(obj, fields.cache_read),
         cache_creation_tokens: firstNum(obj, fields.cache_creation),
-        reasoning_tokens: fields.reasoning ? firstNum(obj, fields.reasoning) : 0,
+        reasoning_tokens: fields.reasoning
+            ? firstNum(obj, fields.reasoning)
+            : 0,
     };
 }
 

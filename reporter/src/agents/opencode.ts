@@ -1,17 +1,17 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
-import { asObject, toMs } from '../lib/parse-utils.ts';
-import { accumulateModelUsage, usageFromFields } from '../lib/totals.ts';
-import { toRows } from '../lib/rows.ts';
+import { asObject, toMs } from '../lib/parse-utils';
+import { toRows } from '../lib/rows';
+import { accumulateModelUsage, usageFromFields } from '../lib/totals';
 import type {
     JsonObject,
     ParseOpts,
     ParsedTranscript,
     ReporterRow,
     ReporterTotals,
-} from '../lib/types.ts';
-import { OPENCODE_USAGE_FIELDS } from '../lib/usage-fields.ts';
+} from '../lib/types';
+import { OPENCODE_USAGE_FIELDS } from '../lib/usage-fields';
 
 function opencodeTimestamp(msg: JsonObject): number | null {
     const time = asObject(msg.time);

@@ -1,14 +1,14 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { asObject, jsonlObjects, toMs } from '../lib/parse-utils.ts';
-import { accumulateModelUsage, usageFromFields } from '../lib/totals.ts';
+import { asObject, jsonlObjects, toMs } from '../lib/parse-utils';
+import { accumulateModelUsage, usageFromFields } from '../lib/totals';
 import type {
     JsonObject,
     ParseOpts,
     ParsedTranscript,
     ReporterTotals,
-} from '../lib/types.ts';
-import { PI_USAGE_FIELDS } from '../lib/usage-fields.ts';
+} from '../lib/types';
+import { PI_USAGE_FIELDS } from '../lib/usage-fields';
 
 interface PiParseState {
     sessionId: string | null;

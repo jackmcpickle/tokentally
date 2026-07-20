@@ -1,15 +1,15 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { asObject } from '../lib/parse-utils.ts';
-import { accumulateModelUsage, usageFromFields } from '../lib/totals.ts';
+import { asObject } from '../lib/parse-utils';
+import { accumulateModelUsage, usageFromFields } from '../lib/totals';
 import type {
     JsonObject,
     ReporterConfig,
     ReporterRow,
     ReporterTotals,
-} from '../lib/types.ts';
-import { CURSOR_USAGE_FIELDS } from '../lib/usage-fields.ts';
+} from '../lib/types';
+import { CURSOR_USAGE_FIELDS } from '../lib/usage-fields';
 
 /**
  * Bucket Cursor dashboard usage events by UTC day + model into session rows.

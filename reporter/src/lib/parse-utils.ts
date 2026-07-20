@@ -1,4 +1,4 @@
-import type { JsonObject } from './types.ts';
+import type { JsonObject } from './types';
 
 export function asObject(value: unknown): JsonObject {
     return value !== null && typeof value === 'object'

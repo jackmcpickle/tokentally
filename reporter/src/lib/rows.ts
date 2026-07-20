@@ -1,5 +1,5 @@
 import { basename } from 'node:path';
-import type { ParsedTranscript, ReporterRow } from './types.ts';
+import type { ParsedTranscript, ReporterRow } from './types';
 
 /** session id from a filename, stripping known prefixes/suffixes. */
 export function sessionIdFromPath(path: string): string {
@@ -16,10 +16,7 @@ export function isSyntheticModel(model: unknown): boolean {
 }
 
 /** Turn a parsed result into API session rows (one per model). */
-export function toRows(
-    parsed: ParsedTranscript,
-    path?: string,
-): ReporterRow[] {
+export function toRows(parsed: ParsedTranscript, path?: string): ReporterRow[] {
     const sid = parsed.session_id ?? sessionIdFromPath(path ?? '');
     const startedAt = parsed.started_at ?? Date.now();
     const rows: ReporterRow[] = [];

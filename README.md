@@ -11,7 +11,7 @@ API and the server-rendered site, backed by one D1 database.
 ## How it works
 
 These tools don't hand token counts to hooks — they only point at local session
-files. So the installed **reporter** (`reporter/src/tokentally.mts` → compiled
+files. So the installed **reporter** (`reporter/src/*` → bundled
 `tokentally.mjs`, a zero-dependency Node script published on npm as
 [`tokenmaxer`](https://www.npmjs.com/package/tokenmaxer)) reads those files, sums
 usage per model, and POSTs the totals — the same files
@@ -50,7 +50,7 @@ src/
   lib/               # auth, pricing, ratelimit, validate, aggregate, format
   db/… drizzle/      # D1 schema + migrations
   __tests__/         # vitest unit tests
-reporter/src/tokentally.mts  # reporter source (strict TS → tokentally.mjs for npm + /tokentally.mjs)
+reporter/src/            # reporter modules (strict TS; esbuild → tokentally.mjs for npm + /tokentally.mjs)
 ```
 
 ## API

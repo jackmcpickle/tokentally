@@ -3,10 +3,10 @@
 Reporter for [tokenmaxer.quest](https://tokenmaxer.quest) — a public leaderboard of
 tokens burned with Claude Code, Codex, opencode, pi and Cursor.
 
-A single zero-dependency Node script (`tokentally.mjs`, compiled from
-`src/tokentally.mts` under a strict TypeScript config). It parses your local
-session transcripts, sums token usage per model, and POSTs per-session totals to
-the tokenmaxer API on SessionStart/SessionEnd hooks.
+A single zero-dependency Node script (`tokentally.mjs`, esbuild-bundled from
+strict TypeScript modules under `src/`). It parses your local session
+transcripts, sums token usage per model, and POSTs per-session totals to the
+tokenmaxer API on SessionStart/SessionEnd hooks.
 
 ## What leaves your machine
 

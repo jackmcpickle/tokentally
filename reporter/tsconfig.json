@@ -1,8 +1,8 @@
 {
     "compilerOptions": {
         "target": "ES2022",
-        "module": "NodeNext",
-        "moduleResolution": "NodeNext",
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
         "lib": ["ES2022"],
         "types": ["node"],
         "strict": true,
@@ -16,12 +16,8 @@
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "rootDir": "src",
-        "outDir": ".",
-        "noEmitOnError": true,
-        "sourceMap": false,
-        "declaration": false,
-        "removeComments": false
+        "noEmit": true
     },
-    "include": ["src/tokentally.mts"],
+    "include": ["src/**/*.ts"],
     "exclude": ["node_modules", "tokentally.mjs"]
 }
