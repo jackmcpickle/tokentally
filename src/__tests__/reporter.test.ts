@@ -11,6 +11,7 @@ import {
     parseCursorEvents,
     parsePiRollout,
     parseSetProfileUrlArgs,
+    resolveCodexInherited,
     buildProfileUrlBody,
     buildProfileUrlDryRun,
     sessionIdFromPath,
@@ -159,6 +160,166 @@ describe('parseCodexRollout', () => {
         expect(gpt.reasoning_tokens).toBe(10);
         expect(o3.input_tokens).toBe(30);
         expect(o3.output_tokens).toBe(15);
+    });
+
+    it('does not treat root sessions as inheriting history', () => {
+        const parsed = parseCodexRollout(CODEX);
+        expect(parsed.parent_id).toBeNull();
+        expect(parsed.pending_inherited).toHaveLength(0);
+    });
+});
+
+function codexLine(type: string, payload: object, ts = '2026-07-18T09:00:00Z') {
+    return JSON.stringify({ type, timestamp: ts, payload });
+}
+
+function tokenCount(
+    input: number,
+    cached: number,
+    output: number,
+    reasoning = 0,
+) {
+    return codexLine('event_msg', {
+        type: 'token_count',
+        info: {
+            last_token_usage: {
+                input_tokens: input,
+                cached_input_tokens: cached,
+                cache_write_input_tokens: 0,
+                output_tokens: output,
+                reasoning_output_tokens: reasoning,
+            },
+        },
+    });
+}
+
+const CHILD_META = codexLine('session_meta', {
+    id: 'child-1',
+    source: {
+        subagent: {
+            thread_spawn: { parent_thread_id: 'parent-1', depth: 1 },
+        },
+    },
+});
+const TURN_CONTEXT = codexLine('turn_context', { model: 'gpt-5-codex' });
+const TRIGGER_TURN = codexLine('inter_agent_communication_metadata', {
+    trigger_turn: true,
+});
+const PARENT_ROLLOUT = [
+    codexLine('session_meta', { id: 'parent-1', model: 'gpt-5-codex' }),
+    tokenCount(100, 80, 10, 2),
+    tokenCount(200, 160, 20, 4),
+    tokenCount(300, 240, 30, 6),
+].join('\n');
+
+describe('parseCodexRollout thread-spawn children', () => {
+    it('drops inherited pre-boundary usage recorded before turn_context (unknown variant)', () => {
+        const parsed = parseCodexRollout(
+            [
+                CHILD_META,
+                tokenCount(100, 80, 10, 2),
+                tokenCount(200, 160, 20, 4),
+                TURN_CONTEXT,
+                TRIGGER_TURN,
+                tokenCount(11, 0, 5, 1),
+            ].join('\n'),
+        );
+        expect(parsed.models.has('unknown')).toBe(false);
+        const t = parsed.models.get('gpt-5-codex');
+        expect(t?.input_tokens).toBe(11);
+        expect(t?.output_tokens).toBe(5);
+        expect(parsed.pending_inherited).toHaveLength(0);
+    });
+
+    it('drops inherited pre-boundary usage recorded after turn_context (named variant)', () => {
+        const parsed = parseCodexRollout(
+            [
+                CHILD_META,
+                TURN_CONTEXT,
+                tokenCount(100, 80, 10, 2),
+                tokenCount(200, 160, 20, 4),
+                TRIGGER_TURN,
+                tokenCount(11, 0, 5, 1),
+            ].join('\n'),
+        );
+        const t = parsed.models.get('gpt-5-codex');
+        expect(t?.input_tokens).toBe(11);
+        expect(t?.cache_read_tokens).toBe(0);
+        expect(t?.reasoning_tokens).toBe(1);
+    });
+
+    it('accepts the boundary marker wrapped in an event_msg', () => {
+        const parsed = parseCodexRollout(
+            [
+                CHILD_META,
+                TURN_CONTEXT,
+                tokenCount(100, 80, 10, 2),
+                codexLine('event_msg', {
+                    type: 'inter_agent_communication_metadata',
+                    trigger_turn: true,
+                }),
+                tokenCount(11, 0, 5),
+            ].join('\n'),
+        );
+        expect(parsed.models.get('gpt-5-codex')?.input_tokens).toBe(11);
+    });
+
+    it('holds pending usage for legacy children without the marker', () => {
+        const parsed = parseCodexRollout(
+            [
+                CHILD_META,
+                TURN_CONTEXT,
+                tokenCount(100, 80, 10, 2),
+                tokenCount(200, 160, 20, 4),
+                tokenCount(11, 0, 5, 1),
+            ].join('\n'),
+        );
+        expect(parsed.parent_id).toBe('parent-1');
+        expect(parsed.models.size).toBe(0);
+        expect(parsed.pending_inherited).toHaveLength(3);
+    });
+
+    it('resolveCodexInherited strips the matched parent prefix', () => {
+        const parsed = parseCodexRollout(
+            [
+                CHILD_META,
+                TURN_CONTEXT,
+                tokenCount(100, 80, 10, 2),
+                tokenCount(200, 160, 20, 4),
+                tokenCount(11, 0, 5, 1),
+            ].join('\n'),
+        );
+        resolveCodexInherited(parsed, PARENT_ROLLOUT);
+        const t = parsed.models.get('gpt-5-codex');
+        expect(t?.input_tokens).toBe(11);
+        expect(t?.output_tokens).toBe(5);
+        expect(parsed.pending_inherited).toHaveLength(0);
+    });
+
+    it('resolveCodexInherited keeps a single-event match (may be coincidence)', () => {
+        const parsed = parseCodexRollout(
+            [
+                CHILD_META,
+                TURN_CONTEXT,
+                tokenCount(100, 80, 10, 2),
+                tokenCount(11, 0, 5, 1),
+            ].join('\n'),
+        );
+        resolveCodexInherited(parsed, PARENT_ROLLOUT);
+        expect(parsed.models.get('gpt-5-codex')?.input_tokens).toBe(111);
+    });
+
+    it('resolveCodexInherited counts everything when the parent is missing', () => {
+        const parsed = parseCodexRollout(
+            [
+                CHILD_META,
+                TURN_CONTEXT,
+                tokenCount(100, 80, 10, 2),
+                tokenCount(11, 0, 5, 1),
+            ].join('\n'),
+        );
+        resolveCodexInherited(parsed, null);
+        expect(parsed.models.get('gpt-5-codex')?.input_tokens).toBe(111);
     });
 });
 

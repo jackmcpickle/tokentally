@@ -49,6 +49,15 @@ tokenmaxer set-profile-url --clear [--dry-run]
 Reporting is idempotent (upsert keyed by session id) — re-running never
 double-counts. Source: <https://github.com/jackmcpickle/tokenmaxer>.
 
+## Codex subagent sessions
+
+Codex subagent/fork children replay part of the parent rollout's history
+(including its token counts) at the top of the child file. The parser excludes
+that inherited prefix so parent usage is only counted once: current rollouts
+are cut at the `trigger_turn` boundary marker; older files without the marker
+are resolved by matching the child's initial token sequence against the parent
+rollout, which is read **locally only** — nothing extra leaves your machine.
+
 ## Cursor manual auth fallback
 
 `cursor-sync` normally reads your Cursor login from Cursor's local
