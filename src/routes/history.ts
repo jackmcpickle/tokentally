@@ -36,8 +36,12 @@ app.post('/history', async (c) => {
     if (!parsed.ok) return c.json({ error: parsed.error }, 400);
 
     const { source, sessions, rejected } = parsed.value;
-    await upsertSessions(c.env.DB, user.id, source, sessions, Date.now());
-    await invalidateProfileCache(c.env.RATE_LIMIT, user.username);
+    // A batch whose rows were all rejected changes nothing: skip the upsert
+    // and keep the user's cached profile aggregates warm.
+    if (sessions.length > 0) {
+        await upsertSessions(c.env.DB, user.id, source, sessions, Date.now());
+        await invalidateProfileCache(c.env.RATE_LIMIT, user.username);
+    }
 
     return c.json({ accepted: sessions.length, rejected });
 });

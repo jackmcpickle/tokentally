@@ -10,6 +10,7 @@
 import type { Dirent } from 'node:fs';
 import {
     closeSync,
+    existsSync,
     openSync,
     readdirSync,
     readFileSync,
@@ -435,6 +436,9 @@ function claudeSessionGroups(): {
     const seenRoots = new Set<string>();
     const seenDirs = new Set<string>();
     for (const d of claudeDirs()) {
+        // An absent root (e.g. no ~/.config/claude on this machine) has
+        // nothing to walk — it must not read as an unlistable folder.
+        if (!existsSync(d)) continue;
         const rootKey = claudeRealKey(d);
         if (seenRoots.has(rootKey)) continue;
         seenRoots.add(rootKey);
@@ -686,13 +690,20 @@ function claudeTreePathOfFile(path: string): string {
 }
 
 // The session tree a directory belongs to, or null for a project-level (or
-// root-level) directory that no session-tree rule can attribute.
+// root-level) directory that no session-tree rule can attribute. In-corpus,
+// the layout fixes the depth — <root>/<project>/<sessionDir>/... — so the
+// unlistable dir may BE the session dir itself (no subagents component in
+// its own path). Out-of-corpus dirs fall back to the subagents rule.
 function claudeTreePathOfDir(dir: string): string | null {
+    const stop = claudeStopDirFor(dir);
+    if (stop !== null) {
+        const segments = dir.slice(stop.length).split(sep).filter(Boolean);
+        const [projSeg, sessionSeg] = segments;
+        if (!projSeg || !sessionSeg) return null;
+        return join(stop, projSeg, sessionSeg).toLowerCase();
+    }
     return (
-        claudeSessionDirOf(
-            join(dir, 'x.jsonl'),
-            claudeStopDirFor(dir),
-        )?.toLowerCase() ?? null
+        claudeSessionDirOf(join(dir, 'x.jsonl'), null)?.toLowerCase() ?? null
     );
 }
 

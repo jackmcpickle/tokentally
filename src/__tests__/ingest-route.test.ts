@@ -100,6 +100,24 @@ describe('POST /api/ingest', () => {
         expect(state.upserted).toBe(2);
     });
 
+    it('skips the upsert when every row was rejected', async () => {
+        const state: State = { upserted: 0 };
+        const res = await post(
+            'ingest',
+            {
+                source: 'claude_code',
+                sessions: [{ session_id: 'sess-a', model: '' }],
+            },
+            state,
+        );
+        expect(res.status).toBe(200);
+        expect(await res.json<IngestResponse>()).toEqual({
+            accepted: 0,
+            rejected: [{ index: 0, error: 'model is required' }],
+        });
+        expect(state.upserted).toBe(0);
+    });
+
     it('accepts a >2B token row (issue #21) with an empty rejected list', async () => {
         const state: State = { upserted: 0 };
         const res = await post(

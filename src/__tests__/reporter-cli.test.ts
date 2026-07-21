@@ -644,6 +644,57 @@ describe('tokenmaxer CLI', () => {
         },
     );
 
+    it.skipIf(userInfo().uid === 0)(
+        'an unlistable session dir itself withholds its beyond-peek session',
+        () => {
+            writeConfig();
+            // The root's real id sits beyond the 16KB peek; the unlistable
+            // dir IS the session dir (no subagents component in its own
+            // path), so tree withholding must key on the layout depth.
+            writeTranscript(
+                '.claude/projects/demo/sess-lockdir.jsonl',
+                [
+                    JSON.stringify({ type: 'user', pad: 'x'.repeat(20_000) }),
+                    claudeUsage({
+                        sid: 'sess-lockdir-embed',
+                        input: 44,
+                        output: 4,
+                    }),
+                ].join('\n'),
+            );
+            const lockedDir = join(home, '.claude/projects/demo/sess-lockdir');
+            mkdirSync(lockedDir, { recursive: true });
+            chmodSync(lockedDir, 0o000);
+            try {
+                const res = runCli(['claude-sessionstart', '--dry-run'], {
+                    home,
+                });
+                expect(res.status).toBe(0);
+                const ids = (
+                    res.stdout.trim()
+                        ? (JSON.parse(res.stdout.trim()).body.sessions as {
+                              session_id: string;
+                          }[])
+                        : []
+                ).map((s) => s.session_id);
+                expect(ids).not.toContain('sess-lockdir-embed');
+            } finally {
+                chmodSync(lockedDir, 0o755);
+            }
+        },
+    );
+
+    it('a healthy corpus prints no unlistable-folder warning', () => {
+        writeConfig();
+        // Only ~/.claude/projects exists (no ~/.config/claude): an absent
+        // root has nothing to walk and must not read as unlistable.
+        writeTranscript('.claude/projects/demo/sess-cli.jsonl', CLAUDE);
+        const res = runCli(['claude-sessionstart', '--dry-run'], { home });
+        expect(res.status).toBe(0);
+        expect(res.stderr).not.toContain('unlistable folder');
+        expect(res.stderr).not.toContain('withheld');
+    });
+
     it('claude-report on a missing path fails loudly', () => {
         writeConfig();
         const res = runCli(
