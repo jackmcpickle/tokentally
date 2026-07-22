@@ -14,6 +14,8 @@ type TextInputProps = {
     autocomplete?: string;
     required?: boolean;
     value?: string;
+    /** HTML input type (default `text`). */
+    type?: 'text' | 'datetime-local';
 };
 
 type SelectInputProps = {
@@ -47,6 +49,19 @@ export const Input: FC<InputProps> = (props) => {
             >
                 {props.children}
             </select>
+        );
+    }
+
+    if (props.type === 'datetime-local') {
+        return (
+            <input
+                class={className}
+                id={props.id}
+                name={props.name}
+                type="datetime-local"
+                required={props.required}
+                value={props.value}
+            />
         );
     }
 

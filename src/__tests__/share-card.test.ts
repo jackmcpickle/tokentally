@@ -14,6 +14,7 @@ const profile: Profile = {
     grand_total: 12_400_000,
     breakdown: [],
     url: null,
+    country: 'AU',
     input_tokens: 0,
     output_tokens: 0,
     cache_read_tokens: 0,

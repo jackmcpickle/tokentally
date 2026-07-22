@@ -47,5 +47,5 @@ export default defineConfig({
         },
     ],
     sortPackageJson: true,
-    ignorePatterns: ['dist/**', 'node_modules/**'],
+    ignorePatterns: ['dist/**', 'node_modules/**', 'CHANGELOG.md'],
 });

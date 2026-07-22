@@ -43,6 +43,7 @@ interface BoardQuery {
     region: ImpactRegion;
     source?: string;
     model?: string;
+    country?: string;
 }
 
 function boardHref(q: BoardQuery): string {
@@ -54,6 +55,7 @@ function boardHref(q: BoardQuery): string {
     });
     if (q.source) params.set('source', q.source);
     if (q.model) params.set('model', q.model);
+    if (q.country) params.set('country', q.country);
     return `/footprint?${params.toString()}`;
 }
 
@@ -101,7 +103,17 @@ export const FootprintChart: FC<{
     region: ImpactRegion;
     source?: string;
     model?: string;
-}> = ({ entries, window, metric, scenario, region, source, model }) => {
+    country?: string;
+}> = ({
+    entries,
+    window,
+    metric,
+    scenario,
+    region,
+    source,
+    model,
+    country,
+}) => {
     const query: BoardQuery = {
         window,
         metric,
@@ -109,6 +121,7 @@ export const FootprintChart: FC<{
         region,
         source,
         model,
+        country,
     };
     const totals = entryTotals(entries);
     const max = Math.max(

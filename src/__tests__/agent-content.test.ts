@@ -171,6 +171,7 @@ const fixtureProfile: Profile = {
     rank: 3,
     sessions: 20,
     url: null,
+    country: 'AU',
     grand_total: 500_000,
     input_tokens: 300_000,
     output_tokens: 150_000,

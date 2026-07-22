@@ -1,3 +1,4 @@
+import { isValidCountry } from '@/lib/countries';
 import { isSyntheticModel } from '@/lib/model-family';
 import { isSource, type SessionUsageInput, type Source } from '@/types';
 
@@ -19,7 +20,66 @@ const RESERVED = new Set([
     'tokenmaxer',
     'me',
     'new',
+    'privacy',
+    'h',
+    'auth',
+    'hackathon',
+    'logout',
+    'session',
 ]);
+
+const MAX_HACKATHON_NAME_LEN = 80;
+// Sane bounds so a fat-fingered date can't create a decade-long contest.
+const MAX_HACKATHON_MS = 366 * 86_400_000;
+
+export function validateHackathonName(raw: unknown): Result<string> {
+    if (typeof raw !== 'string') {
+        return { ok: false, error: 'name must be a string' };
+    }
+    const name = raw.trim();
+    if (name.length < 2) return { ok: false, error: 'name too short' };
+    if (name.length > MAX_HACKATHON_NAME_LEN) {
+        return { ok: false, error: 'name too long' };
+    }
+    return { ok: true, value: name };
+}
+
+export function validateHackathonRange(
+    startRaw: unknown,
+    endRaw: unknown,
+): Result<{ startAt: number; endAt: number }> {
+    const startAt = Number(startRaw);
+    const endAt = Number(endRaw);
+    if (!Number.isFinite(startAt) || !Number.isFinite(endAt)) {
+        return { ok: false, error: 'start and end must be timestamps' };
+    }
+    if (endAt <= startAt) {
+        return { ok: false, error: 'end must be after start' };
+    }
+    if (endAt - startAt > MAX_HACKATHON_MS) {
+        return { ok: false, error: 'range too long (max 1 year)' };
+    }
+    return {
+        ok: true,
+        value: { startAt: Math.floor(startAt), endAt: Math.floor(endAt) },
+    };
+}
+
+export function validateModelFamily(
+    raw: unknown,
+    allowed: string[],
+): Result<string | null> {
+    if (raw === null || raw === undefined || raw === '') {
+        return { ok: true, value: null };
+    }
+    if (typeof raw !== 'string') {
+        return { ok: false, error: 'model family must be a string or null' };
+    }
+    if (!allowed.includes(raw)) {
+        return { ok: false, error: 'unknown model family' };
+    }
+    return { ok: true, value: raw };
+}
 
 // Guardrails: reject physically implausible reports.
 // 2e9 tokens in a single session category
@@ -75,6 +135,17 @@ export function validateUsername(raw: unknown): Result<string> {
         return { ok: false, error: 'that username is reserved' };
     }
     return { ok: true, value: username };
+}
+
+export function validateCountry(raw: unknown): Result<string> {
+    if (typeof raw !== 'string') {
+        return { ok: false, error: 'country is required' };
+    }
+    const code = raw.trim().toUpperCase();
+    if (!isValidCountry(code)) {
+        return { ok: false, error: 'pick a valid country' };
+    }
+    return { ok: true, value: code };
 }
 
 function coerceCount(v: unknown): number {

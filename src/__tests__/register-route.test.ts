@@ -10,6 +10,7 @@ type InsertRow = {
     token_hash: string;
     created_at: number;
     profile_url: string | null;
+    country: string;
 };
 
 const state = {
@@ -49,6 +50,7 @@ function db(): D1Database {
                             token_hash: self.binds[3] as string,
                             created_at: self.binds[4] as number,
                             profile_url: self.binds[5] as string | null,
+                            country: self.binds[6] as string,
                         };
                         if (
                             state.users.some(
@@ -95,7 +97,9 @@ async function register(
                 'Content-Type': 'application/json',
                 ...headers,
             },
-            body: JSON.stringify(body),
+            // Country is required; default it so existing cases stay valid.
+            // A case can override or omit it via an explicit `country` key.
+            body: JSON.stringify({ country: 'US', ...body }),
         },
         env(over),
     );
@@ -155,6 +159,36 @@ describe('POST /api/register', () => {
         });
         expect(res.status).toBe(400);
         expect(state.lastInsert).toBeNull();
+        expect(state.users).toHaveLength(0);
+    });
+
+    it('stores the normalized country code', async () => {
+        const res = await register({
+            username: 'erin',
+            turnstileToken: 'ok',
+            country: 'au',
+        });
+        expect(res.status).toBe(201);
+        expect(state.lastInsert?.country).toBe('AU');
+    });
+
+    it('rejects a missing country without inserting', async () => {
+        const res = await register({
+            username: 'frank',
+            turnstileToken: 'ok',
+            country: undefined,
+        });
+        expect(res.status).toBe(400);
+        expect(state.users).toHaveLength(0);
+    });
+
+    it('rejects an unknown country without inserting', async () => {
+        const res = await register({
+            username: 'grace',
+            turnstileToken: 'ok',
+            country: 'ZZ',
+        });
+        expect(res.status).toBe(400);
         expect(state.users).toHaveLength(0);
     });
 

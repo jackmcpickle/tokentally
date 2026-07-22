@@ -1,4 +1,5 @@
 import type { FC } from 'hono/jsx';
+import { countryName, flagEmoji } from '@/lib/countries';
 import {
     type ImpactMetric,
     type ImpactRegion,
@@ -97,12 +98,14 @@ interface FootprintProps {
     base: string;
     entries: FootprintEntry[];
     models: string[];
+    countries: string[];
     window: TimeWindow;
     metric: ImpactMetric;
     scenario: ImpactScenario;
     region: ImpactRegion;
     source: Source | undefined;
     model: string | undefined;
+    country: string | undefined;
 }
 
 export const Footprint: FC<FootprintProps> = (p) => (
@@ -226,6 +229,36 @@ export const Footprint: FC<FootprintProps> = (p) => (
                     ))}
                 </Input>
             </label>
+            {p.countries.length > 0 && (
+                <label
+                    class={filterLabel}
+                    htmlFor="filter-country"
+                >
+                    Country
+                    <Input
+                        variant="select"
+                        id="filter-country"
+                        name="country"
+                        onchange={AUTO_SUBMIT}
+                    >
+                        <option
+                            value=""
+                            selected={!p.country}
+                        >
+                            All
+                        </option>
+                        {p.countries.map((code) => (
+                            <option
+                                key={code}
+                                value={code}
+                                selected={code === p.country}
+                            >
+                                {`${flagEmoji(code)} ${countryName(code)}`}
+                            </option>
+                        ))}
+                    </Input>
+                </label>
+            )}
         </form>
 
         <FootprintChart
@@ -236,6 +269,7 @@ export const Footprint: FC<FootprintProps> = (p) => (
             region={p.region}
             source={p.source}
             model={p.model}
+            country={p.country}
         />
 
         <section class="mx-auto mb-10 max-w-[65ch]">

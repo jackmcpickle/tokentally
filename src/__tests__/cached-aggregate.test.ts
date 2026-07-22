@@ -20,7 +20,21 @@ describe('cache keys', () => {
                 model: 'sonnet',
                 limit: 100,
             }),
-        ).toBe('agg:lb:v1:7d:total:claude_code:sonnet:100');
+        ).toBe('agg:lb:v1:7d:total:claude_code:sonnet::100');
+    });
+
+    it('leaderboard key separates by country', () => {
+        const base = {
+            window: '7d' as const,
+            metric: 'total' as const,
+            limit: 100,
+        };
+        expect(leaderboardCacheKey({ ...base, country: 'AU' })).toBe(
+            'agg:lb:v1:7d:total:::AU:100',
+        );
+        expect(leaderboardCacheKey({ ...base, country: 'US' })).not.toBe(
+            leaderboardCacheKey({ ...base, country: 'AU' }),
+        );
     });
 
     it('profile key is lowercased', () => {

@@ -79,6 +79,17 @@ describe('agentPageRoutes', () => {
         expect(await res.text()).toContain('# Reference pricing');
     });
 
+    it('serves privacy.md as markdown', async () => {
+        const res = await agentPageRoutes.request(
+            'https://tokenmaxer.quest/privacy.md',
+            {},
+            env(),
+        );
+        expect(res.status).toBe(200);
+        expect(res.headers.get('Content-Type')).toMatch(/text\/markdown/u);
+        expect(await res.text()).toContain('# Privacy');
+    });
+
     it('rejects start.md without invite when gate on', async () => {
         const res = await agentPageRoutes.request(
             'https://tokenmaxer.quest/start.md',

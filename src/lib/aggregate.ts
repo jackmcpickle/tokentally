@@ -56,6 +56,7 @@ export interface Profile extends Totals {
     grand_total: number;
     breakdown: ModelBreakdown[];
     url: string | null;
+    country: string;
 }
 
 /** Lightweight windowed totals for share cards (no breakdown / rank). */
@@ -145,6 +146,8 @@ export interface LeaderboardQuery {
     source?: Source;
     /** Model family id (e.g. `sonnet`), not a raw versioned model string. */
     model?: string;
+    /** ISO 3166-1 alpha-2 country code; undefined = all countries. */
+    country?: string;
     limit?: number;
 }
 
@@ -158,6 +161,10 @@ export async function getLeaderboard(
     if (q.source) {
         conditions.push('su.source = ?');
         binds.push(q.source);
+    }
+    if (q.country) {
+        conditions.push('u.country = ?');
+        binds.push(q.country);
     }
     // Model filter is applied in JS via familyOf so all versioned variants
     // (e.g. claude-sonnet-4-6 and claude-sonnet-5) match one family id.
@@ -206,6 +213,70 @@ export async function getLeaderboard(
     return limited;
 }
 
+export interface HackathonLeaderboardQuery {
+    metric: Metric;
+    startAt: number;
+    endAt: number;
+    memberIds: string[];
+    /** Model family id (e.g. `sonnet`); undefined = all models count. */
+    model?: string;
+    limit?: number;
+}
+
+/**
+ * Leaderboard scoped to an explicit [startAt, endAt) range and a fixed member
+ * set. Reuses the same folding/ranking as getLeaderboard.
+ */
+export async function getHackathonLeaderboard(
+    db: D1Database,
+    q: HackathonLeaderboardQuery,
+): Promise<LeaderboardEntry[]> {
+    if (q.memberIds.length === 0) return [];
+    const placeholders = q.memberIds.map(() => '?').join(', ');
+    const sql = `${GROUP_SELECT} WHERE su.started_at >= ? AND su.started_at < ? AND su.user_id IN (${placeholders}) GROUP BY su.user_id, su.source, su.model`;
+    const res = await db
+        .prepare(sql)
+        .bind(q.startAt, q.endAt, ...q.memberIds)
+        .all<GroupedRow>();
+
+    const byUser = new Map<
+        string,
+        { username: string; totals: Totals; sessions: number }
+    >();
+    for (const r of res.results) {
+        if (isSyntheticModel(r.model)) continue;
+        if (q.model && familyOf(r.model) !== q.model) continue;
+        let entry = byUser.get(r.user_id);
+        if (!entry) {
+            entry = {
+                username: r.username,
+                totals: emptyTotals(),
+                sessions: 0,
+            };
+            byUser.set(r.user_id, entry);
+        }
+        addRow(entry.totals, r);
+        entry.sessions += r.sessions;
+    }
+
+    const entries: LeaderboardEntry[] = [];
+    for (const [, v] of byUser) {
+        entries.push({
+            rank: 0,
+            username: v.username,
+            sessions: v.sessions,
+            grand_total: grandTotal(v.totals),
+            ...v.totals,
+        });
+    }
+    entries.sort((a, b) => metricValue(b, q.metric) - metricValue(a, q.metric));
+    const limited = entries.slice(0, q.limit ?? 100);
+    limited.forEach((e, i) => {
+        e.rank = i + 1;
+    });
+    return limited;
+}
+
 export async function getDistinctModels(db: D1Database): Promise<string[]> {
     const res = await db
         .prepare('SELECT DISTINCT model FROM session_usage ORDER BY model')
@@ -226,7 +297,7 @@ export async function getProfile(
 ): Promise<Profile | null> {
     const user = await db
         .prepare(
-            'SELECT id, username, created_at, profile_url FROM users WHERE username_lower = ?',
+            'SELECT id, username, created_at, profile_url, country FROM users WHERE username_lower = ?',
         )
         .bind(username.toLowerCase())
         .first<{
@@ -234,6 +305,7 @@ export async function getProfile(
             username: string;
             created_at: number;
             profile_url: string | null;
+            country: string;
         }>();
     if (!user) return null;
 
@@ -279,8 +351,25 @@ export async function getProfile(
         grand_total: myTotal,
         breakdown,
         url: user.profile_url ?? null,
+        country: user.country,
         ...totals,
     };
+}
+
+/**
+ * ISO country codes for users who have reported at least one session, sorted.
+ * Powers the leaderboard country filter so it lists only countries in play.
+ */
+export async function getDistinctCountries(db: D1Database): Promise<string[]> {
+    const res = await db
+        .prepare(
+            `SELECT DISTINCT u.country AS country
+             FROM users u
+             JOIN session_usage su ON su.user_id = u.id
+             ORDER BY u.country`,
+        )
+        .all<{ country: string }>();
+    return res.results.map((r) => r.country);
 }
 
 /**

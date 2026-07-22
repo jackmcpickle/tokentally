@@ -1,5 +1,6 @@
 import type { FC } from 'hono/jsx';
 import type { Profile } from '@/lib/aggregate';
+import { countryName, flagEmoji } from '@/lib/countries';
 import { formatDate, formatTokens, formatUsd } from '@/lib/format';
 import { Button } from '@/pages/components/button';
 import { Layout } from '@/pages/layout';
@@ -126,8 +127,9 @@ export const ProfilePage: FC<{ base: string; profile: Profile }> = ({
             <section class={hero}>
                 <h1 class="reveal">{p.username}</h1>
                 <p class="reveal reveal-delay mb-0 max-w-[52ch] text-[18px] leading-snug tracking-[-0.18px] text-muted">
-                    Rank #{p.rank} · joined {formatDate(p.created_at)} ·{' '}
-                    {p.sessions} sessions tracked
+                    {flagEmoji(p.country)} {countryName(p.country)} · Rank #
+                    {p.rank} · joined {formatDate(p.created_at)} · {p.sessions}{' '}
+                    sessions tracked
                 </p>
                 {p.url ? (
                     <p class="reveal reveal-delay mt-3 mb-0 text-[16px]">

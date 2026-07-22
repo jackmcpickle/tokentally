@@ -12,10 +12,12 @@ import {
     reportOneOpencode,
 } from './commands';
 import { loadConfig } from './config';
+import { runLogin } from './login';
 import { runSetProfileUrl } from './profile';
 
 // Commands you run yourself.
 const USER_COMMANDS: Array<[string, string]> = [
+    ['login', 'open a browser login link to manage hackathons'],
     [
         'backfill [claude|codex|opencode|pi|cursor]',
         'one-time: upload ALL past history (optionally scoped to one source)',
@@ -86,6 +88,10 @@ export async function main(): Promise<void> {
     }
     if (cmd === 'set-profile-url') {
         await runSetProfileUrl(process.argv.slice(3));
+        return;
+    }
+    if (cmd === 'login') {
+        await runLogin();
         return;
     }
     const cfg = loadConfig();

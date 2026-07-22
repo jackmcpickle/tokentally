@@ -283,7 +283,7 @@ export const Layout: FC<LayoutProps> = (props) => {
                             </span>
                             <a
                                 class="nav-link text-muted no-underline hover:text-text"
-                                href="/about"
+                                href="/privacy"
                             >
                                 Privacy &amp; honor system
                             </a>

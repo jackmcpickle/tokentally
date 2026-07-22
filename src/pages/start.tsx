@@ -1,4 +1,5 @@
 import type { FC } from 'hono/jsx';
+import { COUNTRIES, flagEmoji } from '@/lib/countries';
 import { Button } from '@/pages/components/button';
 import { Input } from '@/pages/components/input';
 import { Layout } from '@/pages/layout';
@@ -84,6 +85,8 @@ if (form) {
     err.textContent = '';
     const username = document.getElementById('username').value.trim();
     const profileUrl = document.getElementById('profile-url').value.trim();
+    const country = document.getElementById('country').value;
+    if (!country) { err.textContent = 'Please pick your country.'; return; }
     const turnstileToken = form.querySelector('[name="cf-turnstile-response"]')?.value;
     if (!turnstileToken) { err.textContent = 'Please complete the verification.'; return; }
     const btn = form.querySelector('button');
@@ -96,8 +99,8 @@ if (form) {
         credentials: 'same-origin',
         body: JSON.stringify(
           profileUrl
-            ? { username, turnstileToken, url: profileUrl }
-            : { username, turnstileToken }
+            ? { username, turnstileToken, country, url: profileUrl }
+            : { username, turnstileToken, country }
         )
       });
       const data = await res.json();
@@ -189,6 +192,48 @@ export const Start: FC<{
                     id="claim-panel"
                     class={panel}
                 >
+                    <div class="mb-5 grid gap-4 rounded-lg bg-panel2 p-4 sm:grid-cols-2">
+                        <div>
+                            <p class="mb-2 text-[13px] font-semibold tracking-[-0.13px] text-text">
+                                What we store
+                            </p>
+                            <ul class="list-disc space-y-1 pl-4 text-[13px] text-muted">
+                                <li>Your username &amp; country</li>
+                                <li>
+                                    Per-session token counts, model &amp; tool
+                                </li>
+                                <li>Optional public profile URL</li>
+                                <li>
+                                    A SHA-256 hash of your token — never the
+                                    token
+                                </li>
+                            </ul>
+                        </div>
+                        <div>
+                            <p class="mb-2 text-[13px] font-semibold tracking-[-0.13px] text-text">
+                                What we never store
+                            </p>
+                            <ul class="list-disc space-y-1 pl-4 text-[13px] text-muted">
+                                <li>Prompts, code, or file paths</li>
+                                <li>Email or password</li>
+                                <li>Your raw token</li>
+                            </ul>
+                        </div>
+                        <p class="text-[12px] text-muted sm:col-span-2">
+                            Private by default — no email, no password. The
+                            token is your only credential.{' '}
+                            <strong class="text-text">
+                                If you lose it there&apos;s no recovery
+                            </strong>{' '}
+                            and the username is stranded; rotate it while you
+                            still hold it, or{' '}
+                            <a href="mailto:jackmcpickle@gmail.com?subject=tokenmaxer.quest%20lost%20token">
+                                contact us
+                            </a>{' '}
+                            if you&apos;re stuck.{' '}
+                            <a href="/privacy">Full privacy details →</a>
+                        </p>
+                    </div>
                     <form id="reg">
                         <label
                             class={field}
@@ -204,6 +249,34 @@ export const Start: FC<{
                                 autocomplete="off"
                                 required
                             />
+                        </label>
+                        <label
+                            class={field}
+                            htmlFor="country"
+                        >
+                            <span class={fieldLbl}>Country</span>
+                            <Input
+                                variant="select"
+                                id="country"
+                                name="country"
+                                required
+                            >
+                                <option
+                                    value=""
+                                    selected
+                                    disabled
+                                >
+                                    Select country…
+                                </option>
+                                {COUNTRIES.map((ctry) => (
+                                    <option
+                                        key={ctry.code}
+                                        value={ctry.code}
+                                    >
+                                        {`${flagEmoji(ctry.code)} ${ctry.name}`}
+                                    </option>
+                                ))}
+                            </Input>
                         </label>
                         <label
                             class={field}

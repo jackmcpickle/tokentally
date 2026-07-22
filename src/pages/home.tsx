@@ -1,5 +1,6 @@
 import type { FC } from 'hono/jsx';
 import type { LeaderboardEntry } from '@/lib/aggregate';
+import { countryName, flagEmoji } from '@/lib/countries';
 import { familyLabel } from '@/lib/model-family';
 import { Button } from '@/pages/components/button';
 import { Input } from '@/pages/components/input';
@@ -19,10 +20,13 @@ interface HomeProps {
     entries: LeaderboardEntry[];
     /** Bundled model family ids for the filter (e.g. `sonnet`). */
     models: string[];
+    /** ISO country codes that have at least one reporting user. */
+    countries: string[];
     window: TimeWindow;
     metric: Metric;
     source: Source | undefined;
     model: string | undefined;
+    country: string | undefined;
 }
 
 export const Home: FC<HomeProps> = (p) => (
@@ -143,6 +147,36 @@ export const Home: FC<HomeProps> = (p) => (
                     ))}
                 </Input>
             </label>
+            {p.countries.length > 0 && (
+                <label
+                    class={filterLabel}
+                    htmlFor="filter-country"
+                >
+                    Country
+                    <Input
+                        variant="select"
+                        id="filter-country"
+                        name="country"
+                        onchange={AUTO_SUBMIT}
+                    >
+                        <option
+                            value=""
+                            selected={!p.country}
+                        >
+                            All
+                        </option>
+                        {p.countries.map((code) => (
+                            <option
+                                key={code}
+                                value={code}
+                                selected={code === p.country}
+                            >
+                                {`${flagEmoji(code)} ${countryName(code)}`}
+                            </option>
+                        ))}
+                    </Input>
+                </label>
+            )}
         </form>
 
         <LeaderboardChart
@@ -151,6 +185,7 @@ export const Home: FC<HomeProps> = (p) => (
             metric={p.metric}
             source={p.source}
             model={p.model}
+            country={p.country}
         />
 
         <aside class="spotlight spotlight-violet mt-4 flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">

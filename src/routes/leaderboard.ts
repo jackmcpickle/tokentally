@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { cachedLeaderboard, cachedProfile } from '@/lib/cached-aggregate';
+import { isValidCountry } from '@/lib/countries';
 import { apiCache } from '@/lib/page-cache';
 import {
     type Env,
@@ -22,6 +23,11 @@ export function parseMetric(v: string | undefined): Metric {
 export function parseSourceParam(v: string | undefined): Source | undefined {
     return isSource(v) ? v : undefined;
 }
+export function parseCountryParam(v: string | undefined): string | undefined {
+    if (!v) return undefined;
+    const code = v.trim().toUpperCase();
+    return isValidCountry(code) ? code : undefined;
+}
 
 // GET /api/leaderboard?window=&metric=&source=&model=&limit=
 app.get('/leaderboard', apiCache, async (c) => {
@@ -30,6 +36,7 @@ app.get('/leaderboard', apiCache, async (c) => {
     const source = parseSourceParam(c.req.query('source'));
     const modelRaw = c.req.query('model');
     const model = modelRaw && modelRaw.length > 0 ? modelRaw : undefined;
+    const country = parseCountryParam(c.req.query('country'));
     const limitRaw = Number.parseInt(c.req.query('limit') ?? '100', 10);
     const limit = Number.isFinite(limitRaw)
         ? Math.min(Math.max(limitRaw, 1), 500)
@@ -38,7 +45,7 @@ app.get('/leaderboard', apiCache, async (c) => {
     const entries = await cachedLeaderboard(
         c.env.DB,
         c.env.RATE_LIMIT,
-        { window, metric, source, model, limit },
+        { window, metric, source, model, country, limit },
         Date.now(),
     );
     return c.json({
@@ -46,6 +53,7 @@ app.get('/leaderboard', apiCache, async (c) => {
         metric,
         source: source ?? null,
         model: model ?? null,
+        country: country ?? null,
         entries,
     });
 });

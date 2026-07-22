@@ -4,6 +4,7 @@ import {
     MAX_INGEST_SESSIONS,
     parseHistoryBody,
     parseIngestBody,
+    validateCountry,
     validateProfileUrl,
     validateUsername,
 } from '@/lib/validate';
@@ -257,5 +258,24 @@ describe('validateProfileUrl', () => {
     it('rejects overlong URLs', () => {
         const long = `https://example.com/${'a'.repeat(2048)}`;
         expect(validateProfileUrl(long).ok).toBe(false);
+    });
+});
+
+describe('validateCountry', () => {
+    it('accepts and normalizes a valid code', () => {
+        const r = validateCountry('au');
+        expect(r).toEqual({ ok: true, value: 'AU' });
+        expect(validateCountry(' Us ')).toEqual({ ok: true, value: 'US' });
+    });
+
+    it('rejects unknown codes', () => {
+        expect(validateCountry('ZZ').ok).toBe(false);
+        expect(validateCountry('AUS').ok).toBe(false);
+    });
+
+    it('rejects non-string / empty input', () => {
+        expect(validateCountry(undefined).ok).toBe(false);
+        expect(validateCountry('').ok).toBe(false);
+        expect(validateCountry(42).ok).toBe(false);
     });
 });

@@ -35,12 +35,14 @@ function boardHref(opts: {
     metric: Metric;
     source?: string;
     model?: string;
+    country?: string;
 }): string {
     const q = new URLSearchParams();
     q.set('window', opts.window);
     q.set('metric', opts.metric);
     if (opts.source) q.set('source', opts.source);
     if (opts.model) q.set('model', opts.model);
+    if (opts.country) q.set('country', opts.country);
     return `/?${q.toString()}`;
 }
 
@@ -76,7 +78,8 @@ export const LeaderboardChart: FC<{
     metric: Metric;
     source?: string;
     model?: string;
-}> = ({ entries, window, metric, source, model }) => {
+    country?: string;
+}> = ({ entries, window, metric, source, model, country }) => {
     const totals = entryTotals(entries);
     const max = Math.max(...entries.map((e) => metricValue(e, metric)), 1);
 
@@ -104,6 +107,7 @@ export const LeaderboardChart: FC<{
                                 metric,
                                 source,
                                 model,
+                                country,
                             })}
                             class="!min-h-0 rounded-md px-3 py-1.5 text-sm font-bold"
                         >
@@ -125,6 +129,7 @@ export const LeaderboardChart: FC<{
                                 metric: m,
                                 source,
                                 model,
+                                country,
                             })}
                             class={`!min-h-0 flex-1 flex-col justify-center gap-1 rounded-none border-t border-border px-4 py-4 first:border-t-0 sm:border-t-0 sm:border-l sm:first:border-l-0 ${
                                 active ? 'bg-panel2' : ''

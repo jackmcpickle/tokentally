@@ -2,7 +2,11 @@ import { Hono } from 'hono';
 import { authenticate, generateToken, hashToken, newId } from '@/lib/auth';
 import { getInviteCookie, inviteSessionAllowed } from '@/lib/invite';
 import { rateLimit } from '@/lib/ratelimit';
-import { validateProfileUrl, validateUsername } from '@/lib/validate';
+import {
+    validateCountry,
+    validateProfileUrl,
+    validateUsername,
+} from '@/lib/validate';
 import type { Env } from '@/types';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -52,11 +56,13 @@ app.post('/register', async (c) => {
             username?: unknown;
             turnstileToken?: unknown;
             url?: unknown;
+            country?: unknown;
         }>()
         .catch(() => ({
             username: undefined,
             turnstileToken: undefined,
             url: undefined,
+            country: undefined,
         }));
 
     const invited = await inviteSessionAllowed(
@@ -80,6 +86,10 @@ app.post('/register', async (c) => {
     if (!urlCheck.ok) return c.json({ error: urlCheck.error }, 400);
     const profileUrl = urlCheck.value;
 
+    const countryCheck = validateCountry(body.country);
+    if (!countryCheck.ok) return c.json({ error: countryCheck.error }, 400);
+    const country = countryCheck.value;
+
     const existing = await c.env.DB.prepare(
         'SELECT id FROM users WHERE username_lower = ?',
     )
@@ -93,7 +103,7 @@ app.post('/register', async (c) => {
 
     try {
         await c.env.DB.prepare(
-            'INSERT INTO users (id, username, username_lower, token_hash, created_at, profile_url) VALUES (?, ?, ?, ?, ?, ?)',
+            'INSERT INTO users (id, username, username_lower, token_hash, created_at, profile_url, country) VALUES (?, ?, ?, ?, ?, ?, ?)',
         )
             .bind(
                 id,
@@ -102,6 +112,7 @@ app.post('/register', async (c) => {
                 tokenHash,
                 Date.now(),
                 profileUrl,
+                country,
             )
             .run();
     } catch {

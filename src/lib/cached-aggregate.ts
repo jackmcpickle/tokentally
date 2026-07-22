@@ -1,5 +1,8 @@
 import {
+    getDistinctCountries,
     getDistinctModelFamilies,
+    getHackathonLeaderboard,
+    type HackathonLeaderboardQuery,
     getLeaderboard,
     getProfile,
     getProfileWindowTotals,
@@ -8,8 +11,12 @@ import {
     type Profile,
     type ProfileWindowTotals,
 } from '@/lib/aggregate';
-import { getOrSet, READ_CACHE_TTL_SECONDS } from '@/lib/read-cache';
-import type { TimeWindow } from '@/types';
+import {
+    getOrSet,
+    HACKATHON_CACHE_TTL_SECONDS,
+    READ_CACHE_TTL_SECONDS,
+} from '@/lib/read-cache';
+import type { Metric, TimeWindow } from '@/types';
 
 export function leaderboardCacheKey(query: LeaderboardQuery): string {
     return [
@@ -18,6 +25,7 @@ export function leaderboardCacheKey(query: LeaderboardQuery): string {
         query.metric,
         query.source ?? '',
         query.model ?? '',
+        query.country ?? '',
         String(query.limit ?? 100),
     ].join(':');
 }
@@ -45,6 +53,7 @@ export async function invalidateProfileCache(
 }
 
 const MODELS_CACHE_KEY = 'agg:models:v1';
+const COUNTRIES_CACHE_KEY = 'agg:countries:v1';
 
 function withReadCache<T>(
     kv: KVNamespace,
@@ -87,11 +96,53 @@ export async function cachedProfileWindow(
     );
 }
 
+export function hackathonLeaderboardCacheKey(
+    slug: string,
+    metric: Metric,
+): string {
+    return `agg:hack:v1:${slug.toLowerCase()}:${metric}`;
+}
+
+/** Drop all cached metric variants for a hackathon after a membership/edit change. */
+export async function invalidateHackathonCache(
+    kv: KVNamespace,
+    slug: string,
+): Promise<void> {
+    await Promise.all(
+        (['total', 'input', 'output', 'cached', 'cost'] as const).map((m) =>
+            kv.delete(hackathonLeaderboardCacheKey(slug, m)),
+        ),
+    );
+}
+
+export async function cachedHackathonLeaderboard(
+    db: D1Database,
+    kv: KVNamespace,
+    slug: string,
+    query: HackathonLeaderboardQuery,
+): Promise<LeaderboardEntry[]> {
+    return getOrSet(
+        kv,
+        hackathonLeaderboardCacheKey(slug, query.metric),
+        HACKATHON_CACHE_TTL_SECONDS,
+        () => getHackathonLeaderboard(db, query),
+    );
+}
+
 export async function cachedDistinctModelFamilies(
     db: D1Database,
     kv: KVNamespace,
 ): Promise<string[]> {
     return withReadCache(kv, MODELS_CACHE_KEY, () =>
         getDistinctModelFamilies(db),
+    );
+}
+
+export async function cachedDistinctCountries(
+    db: D1Database,
+    kv: KVNamespace,
+): Promise<string[]> {
+    return withReadCache(kv, COUNTRIES_CACHE_KEY, () =>
+        getDistinctCountries(db),
     );
 }
