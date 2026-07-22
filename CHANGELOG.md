@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.2.5](https://github.com/jackmcpickle/tokenmaxer/compare/v0.2.4...v0.2.5) (2026-07-22)
+
+### Features
+
+* **hackathon:** time-boxed competitions + browser sessions ([#23](https://github.com/jackmcpickle/tokenmaxer/issues/23)) ([355276e](https://github.com/jackmcpickle/tokenmaxer/commit/355276eec404362d7c63e860758c0c5dd899855a))
 ## 0.2.4 (2026-07-20)
 
 ### Features
